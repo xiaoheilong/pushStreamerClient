@@ -1,0 +1,137 @@
+[Version]
+Signature="$WINDOWS NT$"
+Class=HIDClass
+ClassGuid={745A17A0-74D3-11D0-B6FE-00A0C90F57DA}
+Provider=%TTC%
+DriverVer=07/05/2020,11.50.53.202
+CatalogFile=ttcvcontr.cat
+
+; ================= Device section =====================
+
+[Manufacturer]
+%MfgName%=Tetherscript,NTamd64, NTamd64.6.2
+
+; For XP and later
+[Tetherscript.NTamd64]
+%DeviceDesc%=ttcvcontrollershim, root\ttcvcontr
+
+; For Win8 and later so we can use inbox HID-UMDF mapper
+[Tetherscript.NTamd64.6.2]
+%DeviceDesc%=ttcvcontrollershim.win8, root\ttcvcontr
+
+;===============================================================
+;   vhidmini for pre-win8 (uses developer-provided HID-UMDF mapper)
+;===============================================================
+[ttcvcontrollershim.NT]
+CopyFiles=ttcvcontrollershim.Files.Ext,UMDriverCopy
+
+[ttcvcontrollershim.NT.hw]
+AddReg=ttcvcontr_AddReg
+
+[ttcvcontrollershim.NT.CoInstallers]
+AddReg=CoInstaller_AddReg
+CopyFiles=CoInstaller_CopyFiles
+
+[ttcvcontrollershim.NT.Services]
+AddService=WUDFRd,0x000001f8,WUDFRD_ServiceInstall  
+AddService=ttcvcontrollershim, 0x000001fa, ttcvcontrollershim.AddService ;flag 0x2 sets this as the service for the device
+
+[ttcvcontrollershim.AddService]
+DisplayName    = %ttcvcontrollershim.SvcDesc%
+ServiceType    = 1                  ; SERVICE_KERNEL_DRIVER
+StartType      = 3                  ; SERVICE_DEMAND_START
+ErrorControl   = 1                  ; SERVICE_ERROR_NORMAL
+ServiceBinary  = %10%\System32\Drivers\ttcvcontrollershim.sys
+LoadOrderGroup = Base
+
+[ttcvcontrollershim.NT.Wdf]
+UmdfService="ttcvcontr", ttcvcontr_Install
+UmdfServiceOrder=ttcvcontr
+UmdfKernelModeClientPolicy=AllowKernelModeClients
+UmdfFileObjectPolicy=AllowNullAndUnknownFileObjects
+UmdfMethodNeitherAction=Copy
+
+;===============================================================
+;   vhidmini for win8 and newer (uses inbox HID-UMDF mapper)
+;===============================================================
+[ttcvcontrollershim.win8.NT]
+CopyFiles=UMDriverCopy
+
+[ttcvcontrollershim.win8.NT.hw]
+AddReg=ttcvcontr_AddReg
+
+[ttcvcontrollershim.win8.NT.CoInstallers]
+AddReg=CoInstaller_AddReg
+CopyFiles=CoInstaller_CopyFiles
+
+[ttcvcontrollershim.win8.NT.Services]
+AddService=WUDFRd,0x000001f8,WUDFRD_ServiceInstall  
+AddService=mshidumdf, 0x000001fa, mshidumdf.AddService ;flag 0x2 sets this as the service for the device
+
+[mshidumdf.AddService]
+ServiceType    = 1                  ; SERVICE_KERNEL_DRIVER
+StartType      = 3                  ; SERVICE_DEMAND_START
+ErrorControl   = 1                  ; SERVICE_ERROR_NORMAL
+ServiceBinary  = %10%\System32\Drivers\mshidumdf.sys
+
+[ttcvcontrollershim.win8.NT.Wdf]
+UmdfService="ttcvcontr", ttcvcontr_Install
+UmdfServiceOrder=ttcvcontr
+UmdfKernelModeClientPolicy=AllowKernelModeClients
+UmdfFileObjectPolicy=AllowNullAndUnknownFileObjects
+UmdfMethodNeitherAction=Copy
+UmdfFsContextUsePolicy=CanUseFsContext2
+
+; ================= common section =====================
+
+[ttcvcontr_AddReg]
+HKR,,"LowerFilters",0x00010008,"WUDFRd" ; FLG_ADDREG_TYPE_MULTI_SZ | FLG_ADDREG_APPEND
+
+[WUDFRD_ServiceInstall]
+DisplayName = %WudfRdDisplayName%
+ServiceType = 1
+StartType = 3
+ErrorControl = 1
+ServiceBinary = %12%\WUDFRd.sys
+LoadOrderGroup = Base
+
+[ttcvcontr_Install]
+UmdfLibraryVersion=1.11.0
+DriverCLSID = "{AFF7875D-FF5E-4F20-B53D-99BCAE827486}" 
+ServiceBinary = "%12%\UMDF\ttcvcontr.dll"
+
+; ================= copy files =====================
+[ttcvcontrollershim.Files.Ext]
+ttcvcontrollershim.sys
+
+[UMDriverCopy]
+ttcvcontr.dll
+
+[SourceDisksNames]
+1=%Disk_Description%,,,
+
+[SourceDisksFiles]
+ttcvcontrollershim.sys = 1
+ttcvcontr.dll=1
+WudfUpdate_01011.dll=1
+
+[DestinationDirs]
+UMDriverCopy=12,UMDF 
+DefaultDestDir = 12
+CoInstaller_CopyFiles = 11
+
+; ================= WDF Coinstaller installation =====================
+[CoInstaller_CopyFiles]
+WudfUpdate_01011.dll
+
+[CoInstaller_AddReg]
+HKR,,CoInstallers32,0x00010000,"WudfUpdate_01011.dll"
+
+;---------------------------------------------------------------;
+[Strings]
+TTC="Tetherscript"
+MfgName="Tetherscript Technology Corporation"
+Disk_Description="ttcvcontr Installation Disk"
+DeviceDesc="Tetherscript Virtual Joystick"
+ttcvcontrollershim.SvcDesc="Service for Tetherscript Virtual Joystick"
+WudfRdDisplayName="Windows Driver Foundation - User-mode Driver Framework Reflector"
