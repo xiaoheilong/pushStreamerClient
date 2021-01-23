@@ -34,7 +34,7 @@ void WsServiceCloudGameThread::run(){
         std::string loginCommand = m_loginCommand.toStdString();
         m_wsSocket->send(loginCommand.c_str());
     }
-    while (m_wsSocket->getReadyState() != WebSocket::CLOSED && m_threadFlag) {
+    while (m_wsSocket.get() && m_wsSocket->getReadyState() != WebSocket::CLOSED && m_threadFlag) {
         WebSocket::pointer wsp = &*m_wsSocket; // <-- because a unique_ptr cannot be copied into a lambda
         m_wsSocket->poll();
         m_wsSocket->dispatch([&](const std::string & message) {
@@ -60,9 +60,10 @@ int WsServiceCloudGameThread::DisconnectWS(){
     //MessageBoxA(NULL , "dasd" , "test" , MB_OK);
     m_threadFlag = false;
     if(m_wsSocket.get()){
-        m_wsSocket->close();
-       m_wsSocket.reset();
-       terminate();
+        if(isRunning()){
+            wait();
+        }
+        m_wsSocket.reset();
     }
     return 0;
 }

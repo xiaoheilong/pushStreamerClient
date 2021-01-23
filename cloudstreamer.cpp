@@ -295,6 +295,9 @@ KeyBoardThread::~KeyBoardThread(){
     if(m_keyBoardConfig.get()){
         m_keyBoardConfig.reset();
     }
+   if(m_threadFlag){
+        this->stop();
+    }
 }
 
 void KeyBoardThread::run(){
@@ -308,7 +311,8 @@ void KeyBoardThread::run(){
     std::string loginCommand = m_loginCommand.toStdString();
     ws->send(loginCommand.c_str());
     emit RecordSignal(UI_INFO ,QString("@@@@@%1 %2 \n").arg(loginCommand.c_str() , m_threadFlag?"1":"2"));
-    while (ws->getReadyState() != WebSocket::CLOSED && m_threadFlag) {
+    emit RecordSignal(UI_INFO , "keyBoard thread start!");
+    while (ws.get() && ws->getReadyState() != WebSocket::CLOSED && m_threadFlag) {
         WebSocket::pointer wsp = &*ws; // <-- because a unique_ptr cannot be copied into a lambda
         ws->poll();
         ws->dispatch([&](const std::string & message) {
@@ -570,7 +574,11 @@ void KeyBoardThread::run(){
             }
         });
     }
-    //ws->close();
+    ws->close();
+    emit RecordSignal(UI_INFO , "keyBoard thread quit!");
+    if(m_keyBoardConfig.get()){
+        m_keyBoardConfig.reset();
+    }
 }
 
 
@@ -592,31 +600,32 @@ bool KeyBoardThread::start(QString wsUrl , QString loginCommand){
 
     m_threadFlag = true;
     //Sleep(1000);
-    if(!KeyMouseInit()){
-        if(g_This){
-            g_This->addLogToEdit(UI_ERROR , "KeyMouseInit failure!");
-        }
-         return false;
-    }else{
-        if(g_This){
-            g_This->addLogToEdit(UI_INFO , "KeyMouseInit success!");
-        }
-    }
+//    if(!KeyMouseInit()){
+//        if(g_This){
+//            g_This->addLogToEdit(UI_ERROR , "KeyMouseInit failure!");
+//        }
+//         return false;
+//    }else{
+//        if(g_This){
+//            g_This->addLogToEdit(UI_INFO , "KeyMouseInit success!");
+//        }
+//    }
 
     QThread::start();
     return true;
 }
 
 bool  KeyBoardThread::stop(){
-        if(!KeyMouseClose()){
-            //QMessageBox::information(NULL , "error!" , "KeyMouseClose failure!");
-            g_This->addLogToEdit(UI_ERROR, "KeyMouseClose failure!!");
-            //return false;
-        }
+//        if(!KeyMouseClose()){
+//            //QMessageBox::information(NULL , "error!" , "KeyMouseClose failure!");
+//            g_This->addLogToEdit(UI_ERROR, "KeyMouseClose failure!!");
+//            //return false;
+//        }
     if(m_threadFlag){
         m_threadFlag= false;
-        //terminate();
-        wait();
+        if(isRunning()){
+            wait();
+        }
         return true;
     }else{
         //QMessageBox::information(NULL , "error!" , "no KeyBoardThread is running!");
@@ -671,7 +680,7 @@ CloudStreamer::CloudStreamer(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::CloudStreamer), m_isInstallDriver(false) , m_isPushStream(false) , m_isOpenKeyBoard(false),m_isWin32Init(false),
     m_keyBoardthreadFlag(false), m_keyBoardThread(nullptr),m_gamePath(""),m_fileSavePath(""),m_mode(DEFAULT_MODE),
-    m_sessionId(""), m_deviceNo(""), m_controlUrl("")
+    m_sessionId(""), m_deviceNo(""), m_controlUrl("") , m_file(NULL)
 {
     ui->setupUi(this);
     ///////////init winsocket 32
@@ -724,6 +733,13 @@ CloudStreamer::CloudStreamer(QWidget *parent) :
     g_This = this;
     SetRunLogCallback(DllLogCallback);
     //StopGameCallback("{\"gameId\":\"1\",\"roomId\":\"io3ilhgr\",\"peerId\":\"xozk2qaw\",\"videoIp\":\"124.71.159.87\",\"videoPort\":\"4443\",\"keyboardIp\":\"124.71.159.87\",\"keyboardPort\":\"4455\"}");
+    if(!KeyMouseInit()){
+            addLogToEdit(UI_ERROR , "KeyMouseInit failure!");
+    }else{
+            addLogToEdit(UI_INFO , "KeyMouseInit success!");
+    }
+    //////////
+    m_file = fopen("c:\\cloudStreamer.txt" , "w+");
 }
 
 
@@ -741,6 +757,12 @@ CloudStreamer::~CloudStreamer()
     if(m_keyBoardThread.get()){
         disconnect(m_keyBoardThread.get() , SIGNAL(RecordSignal(QString , QString)) , this , SLOT(RecordSignalCallBack(QString , QString )));
         m_keyBoardThread.reset();
+    }
+    if(!KeyMouseClose()){
+        addLogToEdit(UI_ERROR, "KeyMouseClose failure!!");
+    }
+    if(m_file){
+        fclose(m_file);
     }
     delete ui;
 }
@@ -845,7 +867,13 @@ void CloudStreamer::uninstall_Driver()
          GetLocalTime( &sys );
          QString str = flagStr;
          str.sprintf("%4d/%2d/%2d %2d:%2d:%2d.%3d", sys.wYear,sys.wMonth,sys.wDay,sys.wHour,sys.wMinute,sys.wSecond,sys.wMilliseconds);
-         ui->textEdit_2->append(logStr + "\n");
+         str +=":";
+         str += logStr;
+         str += "\n";
+         ui->textEdit_2->append(str);
+         if(m_file){
+             fwrite(str.toLocal8Bit().data(), str.size(), 1 , m_file);
+         }
      }
  }
 
@@ -929,7 +957,7 @@ void CloudStreamer::on_pushButton_2_clicked()
     if(UI_MODE::DEFAULT_MODE == m_mode || UI_MODE::ONLY_KEY_BOARD == m_mode){
         if(m_keyBoardThread.get()){
             disconnect(m_keyBoardThread.get() , SIGNAL(RecordSignal(QString , QString)) , this , SLOT(RecordSignalCallBack(QString , QString )));
-            QString wsUrl = "ws://";
+            m_keyBoardThread->stop();
             m_keyBoardThread.reset();
         }
         //std::weak_ptr<CloudStreamer> weakPtr = std::shared_ptr<CloudStreamer>(this);
@@ -961,8 +989,9 @@ void CloudStreamer::on_pushButton_3_clicked()
     ///////
     if(UI_MODE::DEFAULT_MODE == m_mode || UI_MODE::ONLY_KEY_BOARD == m_mode){
         if(m_keyBoardThread.get()){
-            disconnect(m_keyBoardThread.get() , SIGNAL(RecordSignal(QString , QString)) , this , SLOT(RecordSignalCallBack(QString , QString )));
             m_keyBoardThread->stop();
+            disconnect(m_keyBoardThread.get() , SIGNAL(RecordSignal(QString , QString)) , this , SLOT(RecordSignalCallBack(QString , QString )));
+            m_keyBoardThread.reset();
         }
     }
     ui->label_16->setText("stop!");
@@ -1113,7 +1142,7 @@ void CloudStreamer::StartGameCallback(QString data){
            /////////////
 
            QString startGameParams = root["startGameParams"].asCString();
-
+           //////////
            ///////////////
            int ret =  -1;
            if(serverUrl.isEmpty()|| controlUrl.isEmpty() || port.isEmpty() || roomId.isEmpty()|| gameId.isEmpty() || keyboardLoginParams.isEmpty()){
@@ -1133,6 +1162,8 @@ void CloudStreamer::StartGameCallback(QString data){
                 return;
            }
            addLogToEdit(UI_INFO , QString("push stream  params serverUrl=%1  domain:%2  roomId=%3").arg(serverUrl).arg(domain).arg(roomId));
+           ui->lineEdit_3->setText(roomId);
+           ui->lineEdit->setText(serverUrl);
            ret = push(roomId.toLocal8Bit().data(),serverUrl.toLocal8Bit().data(), domain.toLocal8Bit().data(),framerate.toInt() ,
                       bitrate.toInt(),deadline.toInt() , cpuused.toInt(),x.toInt(),
                y.toInt(), mode.toInt(), capmode.toInt(), vol.toInt());
@@ -1214,6 +1245,7 @@ QString CloudStreamer::GetGamePathByID(QString gameId){
 
 void CloudStreamer::StopGameCallback(QString data){
     //QMessageBox::information(NULL , "information!" , "StopGameCallback");
+    ui->pushButton_3->clicked();
     if(!data.isEmpty()){
         Json::Reader reader;
         Json::Value root;
@@ -1264,7 +1296,7 @@ void CloudStreamer::StopGameCallback(QString data){
                    p.execute(c);
                    p.close();
                }
-               addLogToEdit(UI_INFO , "game start success!\n");
+               addLogToEdit(UI_INFO , "game stop success!\n");
            }
         }
     }
@@ -1322,7 +1354,7 @@ QString  WSServiceTransferSignString(QString &deviceNo){
         deviceNoStr = ar;
         fclose(file);
     }
-    //deviceNo = deviceNoStr;
+    deviceNo = deviceNoStr;
     data["deviceNo"] = deviceNoStr.toLocal8Bit().data();
     root["data"] = data;
     ////////

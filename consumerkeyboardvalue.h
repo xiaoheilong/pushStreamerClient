@@ -56,7 +56,9 @@ namespace ConsumerKeyboardValueSpace{
                         m_mutex->unlock();
                     }
                 }
-                terminate();
+                if(isRunning()){
+                    wait();
+                }
             }
 
             virtual int  Produce(T value){

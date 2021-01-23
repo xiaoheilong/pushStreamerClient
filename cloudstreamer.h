@@ -132,5 +132,6 @@ private:
     QString m_sessionId;
     QString m_deviceNo;
     QString m_controlUrl;
+    FILE * m_file;
 };
 #endif // CLOUDSTREAMER_H

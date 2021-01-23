@@ -69,7 +69,6 @@ KeyValueTransformt::KeyValueTransformt(QString nameKeyTable , QString defaultKey
 
     m_gameKeyBoardPath = std::make_shared<DealIniFile>();
     m_gameKeyBoardPath->OpenFile(gameKeyBoardPath);
-
     m_consumerKeyboard = std::make_shared<ConsumerKeyBoardThread>();
     m_consumerKeyboard->start();
 
@@ -98,6 +97,7 @@ KeyValueTransformt::~KeyValueTransformt(){
     }
     m_lastDirectPoint.x = 0;
     m_lastDirectPoint.y = 0 ;
+    //MessageBoxA(NULL, "quit", "keyValueTransformat!" , MB_OK);
 }
 
 
@@ -281,18 +281,18 @@ int KeyValueTransformt::MouseMove_C(int x, int y, int code){
     if(!m_nameKeyTable.get() &&!m_defaultKeyBoardPath.get()){
         return -1;
     }
-//    if(!MouseMove(x, y ,code)){
-//        return -1;
-//    }
+    if(!MouseMove(x, y ,code)){
+        return -1;
+    }
 
-    Products  callback;
-    callback.m_type = ConsumerKeyboardValueSpace::KeyBoardType::MOUSE_ACTION;
-    callback.m_pointer = nullptr;
-    callback.m_callback = std::bind([x, y, code](){
-        MouseMove(x, y ,code);
-        NSSleep(1);
-    });
-    AddKeyValueToThread(callback);
+//    Products  callback;
+//    callback.m_type = ConsumerKeyboardValueSpace::KeyBoardType::MOUSE_ACTION;
+//    callback.m_pointer = nullptr;
+//    callback.m_callback = std::bind([x, y, code](){
+//        MouseMove(x, y ,code);
+//        NSSleep(1);
+//    });
+//    AddKeyValueToThread(callback);
     return 0;
 }
 //鼠标抬起
