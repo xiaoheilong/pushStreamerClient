@@ -300,6 +300,26 @@ KeyBoardThread::~KeyBoardThread(){
     }
 }
 
+void KeyBoardThread::ConnectedCallback(std::string msg , int error){
+    emit RecordSignal(UI_INFO ,QString("ws socket connect successful!").arg(msg.c_str()));
+}
+
+void KeyBoardThread::DisconnectedCallback(std::string msg , int error){
+     emit RecordSignal(UI_ERROR ,QString("ws socket  disconnect  %s!").arg(m_wsUrl.toStdString().c_str()));
+}
+
+void KeyBoardThread::MessageCallback(std::string msg , int error){
+
+}
+
+void KeyBoardThread::FailureCallback(std::string msg , int error){
+
+}
+
+void KeyBoardThread::InterruptCallback(std::string msg , int error){
+
+}
+
 void KeyBoardThread::run(){
     std::string wsUrl= m_wsUrl.toStdString();
     emit RecordSignal(UI_INFO ,QString("@@@@@%1 \n").arg(wsUrl.c_str()));
@@ -312,7 +332,18 @@ void KeyBoardThread::run(){
     ws->send(loginCommand.c_str());
     emit RecordSignal(UI_INFO ,QString("@@@@@%1 %2 \n").arg(loginCommand.c_str() , m_threadFlag?"1":"2"));
     emit RecordSignal(UI_INFO , "keyBoard thread start!");
-    while (ws.get() && ws->getReadyState() != WebSocket::CLOSED && m_threadFlag) {
+    while (m_threadFlag) {
+        if(!(ws.get() && ws->getReadyState() != WebSocket::CLOSED)){
+            //reconnect
+            ws = std::shared_ptr<WebSocket>(WebSocket::from_url(wsUrl));
+            if(!ws){
+                emit RecordSignal(UI_ERROR ,QString("ws init failure%1\n").arg(wsUrl.c_str()));
+                return;
+            }
+            ws->send(loginCommand.c_str());
+            emit RecordSignal(UI_INFO ,QString("@@@@@%1 %2 \n").arg(loginCommand.c_str() , m_threadFlag?"1":"2"));
+            emit RecordSignal(UI_INFO , "keyBoard thread start!");
+        }
         WebSocket::pointer wsp = &*ws; // <-- because a unique_ptr cannot be copied into a lambda
         ws->poll();
         ws->dispatch([&](const std::string & message) {
@@ -755,6 +786,7 @@ CloudStreamer::~CloudStreamer()
         m_iniParse.reset();
     }
     if(m_keyBoardThread.get()){
+        m_keyBoardThread->stop();
         disconnect(m_keyBoardThread.get() , SIGNAL(RecordSignal(QString , QString)) , this , SLOT(RecordSignalCallBack(QString , QString )));
         m_keyBoardThread.reset();
     }
@@ -956,8 +988,8 @@ void CloudStreamer::on_pushButton_2_clicked()
     /////////
     if(UI_MODE::DEFAULT_MODE == m_mode || UI_MODE::ONLY_KEY_BOARD == m_mode){
         if(m_keyBoardThread.get()){
-            disconnect(m_keyBoardThread.get() , SIGNAL(RecordSignal(QString , QString)) , this , SLOT(RecordSignalCallBack(QString , QString )));
             m_keyBoardThread->stop();
+            disconnect(m_keyBoardThread.get() , SIGNAL(RecordSignal(QString , QString)) , this , SLOT(RecordSignalCallBack(QString , QString )));
             m_keyBoardThread.reset();
         }
         //std::weak_ptr<CloudStreamer> weakPtr = std::shared_ptr<CloudStreamer>(this);
@@ -1175,6 +1207,7 @@ void CloudStreamer::StartGameCallback(QString data){
            addLogToEdit(UI_INFO , "push stream success!\n");
            /////////
            if(m_keyBoardThread.get()){
+               m_keyBoardThread->stop();
                disconnect(m_keyBoardThread.get() , SIGNAL(RecordSignal(QString , QString)) , this , SLOT(RecordSignalCallBack(QString , QString )));
                m_keyBoardThread.reset();
            }

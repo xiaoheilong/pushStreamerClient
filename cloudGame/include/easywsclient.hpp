@@ -1,4 +1,4 @@
-#ifndef EASYWSCLIENT_HPP_20120819_MIOFVASDTNUASZDQPLFD
+﻿#ifndef EASYWSCLIENT_HPP_20120819_MIOFVASDTNUASZDQPLFD
 #define EASYWSCLIENT_HPP_20120819_MIOFVASDTNUASZDQPLFD
 
 // This code comes from:
@@ -65,6 +65,7 @@ class WebSocket {
   protected:
     virtual void _dispatch(Callback_Imp& callable) = 0;
     virtual void _dispatchBinary(BytesCallback_Imp& callable) = 0;
+
 };
 
 } // namespace easywsclient

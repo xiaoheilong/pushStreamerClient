@@ -4,6 +4,8 @@
 #include "dealinifile.h"
 //#include "cloudgaestreamdeal.h"
 #include  "keyvaluetransformt.h"
+#include  "websocketConnection.h"
+#include "websocketConnection.h"
 using namespace CloudGameServiceIteratorSpace;
 #include <QMainWindow>
 #include <QString>
@@ -15,14 +17,22 @@ class CloudStreamer;
 }
 using namespace DealIniFileSpace;
 using namespace KeyValueTransformtNamespace;
+using namespace WebSocketNamsSpace;
 //typename KeyValueTransformtNamespace::KeyValueTransformt  KeyValueTransformt;
 class CloudStreamer;
-class KeyBoardThread: public QThread
+class KeyBoardThread: public QThread, public OutterInterfaceConnection
 {
     Q_OBJECT
 public:
     KeyBoardThread( QObject * parent = nullptr);
     ~KeyBoardThread();
+    typedef WebSocketNamsSpace::WsAppConnection wsBoostConnect;
+public:
+    virtual void ConnectedCallback(std::string msg , int error);
+    virtual void DisconnectedCallback(std::string msg , int error);
+    virtual void MessageCallback(std::string msg , int error);
+    virtual void FailureCallback(std::string msg , int error);
+    virtual void InterruptCallback(std::string msg , int error);
 signals:
     void  RecordSignal(QString flagStr , QString logStr);
     void  DisConnect();
@@ -43,6 +53,7 @@ private:
     QString m_loginCommand;
 protected:
     std::shared_ptr<KeyValueTransformt> m_keyBoardConfig;
+    std::shared_ptr<wsBoostConnect>  m_wsBoostSocket;
 };
 
 enum UI_MODE{

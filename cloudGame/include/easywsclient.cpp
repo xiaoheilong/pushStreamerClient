@@ -186,31 +186,12 @@ class _RealWebSocket : public easywsclient::WebSocket
             , useMask(useMask)
             , isRxBad(false)
             , m_closeSocket(false){
-
-//        m_pingThreadEvent = std::make_shared<std::condition_variable>();
-//        m_pingThread = std::make_shared<std::thread>([&]() {
-//            while (!m_closeSocket) {
-//                std::unique_lock<std::mutex> lock(m_mutex);
-//                m_pingThreadEvent->wait_for(lock , std::chrono::seconds(10) /*,[&](){return m_closeSocket == true;}*/);
-//                if(!m_closeSocket){
-//                    sendPing();
-//                    std::cout << "ping wsServer!" << std::endl;
-//                }
-//             }
-//        });
-//        m_pingThread->detach();
     }
 
     ~_RealWebSocket() {
         if (!m_closeSocket) {
             close();
         }
-//        if(m_pingThread.get()){
-//            m_pingThread.reset();
-//        }
-//        if(m_pingThreadEvent.get()){
-//            m_pingThreadEvent.reset();
-//        }
     }
 
     readyStateValues getReadyState() const {
@@ -250,7 +231,7 @@ class _RealWebSocket : public easywsclient::WebSocket
             else if (ret <= 0) {
                 rxbuf.resize(N);
                 closesocket(sockfd);
-                //MessageBoxA(NULL , std::to_string(ret).c_str() , "poll close 1!" , MB_OK);
+                MessageBoxA(NULL , std::to_string(ret).c_str() , "poll close 1!" , MB_OK);
                 readyState = CLOSED;
                 fputs(ret < 0 ? "Connection error!\n" : "Connection closed!\n", stderr);
                 if (ret < 0) {
@@ -273,7 +254,7 @@ class _RealWebSocket : public easywsclient::WebSocket
             }
             else if (ret <= 0) {
                 closesocket(sockfd);
-                //MessageBoxA(NULL , "poll close 2!" , "2121" , MB_OK);
+                MessageBoxA(NULL , "poll close 2!" , "2121" , MB_OK);
                 readyState = CLOSED;
                 fputs(ret < 0 ? "Connection error!\n" : "Connection closed!\n", stderr);
                 if (ret < 0) {
@@ -291,7 +272,7 @@ class _RealWebSocket : public easywsclient::WebSocket
         }
         if (!txbuf.size() && readyState == CLOSING) {
             closesocket(sockfd);
-            //MessageBoxA(NULL , "poll close 3!" , "2121" , MB_OK);
+            MessageBoxA(NULL , "poll close 3!" , "2121" , MB_OK);
             readyState = CLOSED;
             std::cout << "readyState  is CLOSEING!\n" << std::endl;
         }
@@ -365,7 +346,7 @@ class _RealWebSocket : public easywsclient::WebSocket
                     // for now.
                     isRxBad = true;
                     fprintf(stderr, "ERROR: Frame has invalid frame length. Closing.\n");
-                    //MessageBoxA(NULL , "121" , "34@34" ,MB_OK);
+                    MessageBoxA(NULL , "121" , "34@34" ,MB_OK);
                     close();
                     return;
                 }
@@ -410,12 +391,12 @@ class _RealWebSocket : public easywsclient::WebSocket
             }
             else if (ws.opcode == wsheader_type::PONG) { std::cout << "recv a pong!" << std::endl; }
             else if (ws.opcode == wsheader_type::CLOSE) {
-                //MessageBoxA(NULL , (char*)data , "34Error34" ,MB_OK);
+                MessageBoxA(NULL , (char*)data , "34Error34" ,MB_OK);
                 close();
             }
             else {
                 fprintf(stderr, "ERROR: Got unexpected WebSocket message.\n");
-                //MessageBoxA(NULL , "ERROR: Got unexpected WebSocket message" , "34@34" ,MB_OK);
+                MessageBoxA(NULL , "ERROR: Got unexpected WebSocket message" , "34@34" ,MB_OK);
                 close();
             }
 

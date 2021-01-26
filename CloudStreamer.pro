@@ -69,7 +69,8 @@ SOURCES += \
     cloudgaestreamdeal.cpp \
     keyvaluetransformt.cpp \
     gamecommandexetransformt.cpp \
-    consumerkeyboardvalue.cpp
+    consumerkeyboardvalue.cpp \
+    websocketconnection.cpp
 
 HEADERS += \
         cloudGame/include/easywsclient.hpp \
@@ -95,17 +96,24 @@ HEADERS += \
     cloudGame/include/CloudGame.h \
     keyvaluetransformt.h \
     gamecommandexetransformt.h \
-    consumerkeyboardvalue.h
+    consumerkeyboardvalue.h \
+    websocketConnection.h
 
 FORMS += \
         cloudstreamer.ui \
    # cloudstreamerKeyBorad.ui \
    # cloudstreamerStreamer.ui
 
+WEBSOCKET_INCLUDE_PATH=E:/local/boost_1_75_0
+WEBSOCKET_LIBS_PATH=E:/local/boost_1_75_0/lib64-msvc-14.0
+
 INCLUDEPATH += $$PWD/cloudGame/include
+INCLUDEPATH += $$PWD/websocketpp
+INCLUDEPATH +=$$WEBSOCKET_INCLUDE_PATH
 #INCLUDEPATH += $$PWD/cloudGame/include/curl-vc140-static-32_64.7.53.0/lib/native/include
 #INCLUDEPATH += $$PWD/cloudGame/include/openssl-vc140-static-32_64.1.1.0/lib/native/include
 DEPENDPATH += $$PWD/cloudGame/lib/x64
+DEPENDPATH +=$$WEBSOCKET_LIBS_PATH
 #DEPENDPATH += $$PWD/cloudGame/include/openssl-vc140-static-32_64.1.1.0/lib/native/libs/x64/static/Release
 #DEPENDPATH += $$PWD/cloudGame/include/curl-vc140-static-32_64.7.53.0/lib/native/libs/x64/static/release
 
@@ -117,6 +125,7 @@ LIBS += \
       -lUser32 \
       -lDbghelp
 
+LIBS +=-L$$WEBSOCKET_LIBS_PATH
 DISTFILES += \
     cloudGame/include/lib_json/sconscript
 

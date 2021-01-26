@@ -34,7 +34,17 @@ void WsServiceCloudGameThread::run(){
         std::string loginCommand = m_loginCommand.toStdString();
         m_wsSocket->send(loginCommand.c_str());
     }
-    while (m_wsSocket.get() && m_wsSocket->getReadyState() != WebSocket::CLOSED && m_threadFlag) {
+    while (m_threadFlag) {
+        if(!(m_wsSocket.get() && m_wsSocket->getReadyState() != WebSocket::CLOSED)){
+            m_wsSocket = std::shared_ptr<WebSocket>(WebSocket::from_url(m_wsUrl.toLocal8Bit().data()));
+            if(!m_wsSocket){
+                 return;
+            }
+            if(!m_loginCommand.isEmpty()){
+                std::string loginCommand = m_loginCommand.toStdString();
+                m_wsSocket->send(loginCommand.c_str());
+            }
+        }
         WebSocket::pointer wsp = &*m_wsSocket; // <-- because a unique_ptr cannot be copied into a lambda
         m_wsSocket->poll();
         m_wsSocket->dispatch([&](const std::string & message) {
