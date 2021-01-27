@@ -17,6 +17,8 @@
 typedef CloudGameServiceIteratorSpace::CloudGameServiceIterator  CloudGameServiceIteratorEx;
 using namespace WSServiceSpace;
 
+std::shared_ptr<WsServiceBase> wsServiceCloudGame;
+
 //#include "shellapi.h"
 //#include "shlwapi.h"
 //#include   <fstream>
@@ -116,6 +118,17 @@ LONG    errCallbackEx(EXCEPTION_POINTERS*  pException)
 
 int GenerateMiniDump(PEXCEPTION_POINTERS pExceptionPointers)
 {
+    /////////
+    QProcess p;
+    QString c = "taskkill /im ";
+    c += " /f";
+    c += "gst-launch-1.0.exe";
+    p.execute(c);
+    p.close();
+
+    if(wsServiceCloudGame.get()){
+        wsServiceCloudGame->DisconnectWS();
+    }
     // 定义函数指针
     typedef BOOL(WINAPI * MiniDumpWriteDumpT)(
         HANDLE,
@@ -189,7 +202,7 @@ int main(int argc, char *argv[])
     //int rerun = GetProcessidFromName(L"gst-launch-1.0.exe");
     //////////////service bind
     std::shared_ptr<CloudGameServiceIteratorEx> cloudGameServiceIterator = std::make_shared<CloudGameServiceIteratorEx>();
-    std::shared_ptr<WsServiceBase> wsServiceCloudGame(CreateCloudWSClient());
+    wsServiceCloudGame  = std::shared_ptr<WsServiceBase>(CreateCloudWSClient());
     if(!wsServiceCloudGame.get() || !cloudGameServiceIterator.get()){
         // QMessageBox::information(nullptr , "error!" , "wsServiceCloudGame or cloudGameServiceIterator shouldn't be empty!");
          return  -1;

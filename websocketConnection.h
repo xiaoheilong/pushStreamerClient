@@ -41,7 +41,7 @@ public:
     void terminate();
     bool isConnected();
     int  Send(std::string msg);
-    void SetCallback(std::shared_ptr<OutterInterfaceConnection> outter);
+    void SetCallback(OutterInterfaceConnection *outter);
 protected:
     void on_open(websocketpp::connection_hdl hdl);
 
@@ -63,9 +63,9 @@ private:
 	websocketpp::lib::shared_ptr<websocketpp::lib::thread> thread_;
 	websocketpp::connection_hdl hdl_;
     std::string m_uri;
-    //std::shared_ptr<boost::asio::deadline_timer> m_timer;
+    std::shared_ptr<boost::asio::deadline_timer> m_timer;
     bool m_isConnected = false;
-    std::shared_ptr<OutterInterfaceConnection> m_outter;
+    OutterInterfaceConnection *m_outter;
 };
 
 

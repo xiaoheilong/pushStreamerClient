@@ -26,6 +26,7 @@
 #include <bitset>
 #include <QTime>
 #include <QCryptographicHash>
+#include <tlhelp32.h>
 using namespace std;
 using easywsclient::WebSocket;
 //typedef KeyValueTransformtNamespace::KeyValueTransformt  KeyValueTransformt;
@@ -47,6 +48,42 @@ static const QString g_wsServerKey = "ND857fxx*3";
 //推流和键盘默认配置文件在 streamConfig.ini文件中
 //////云游戏默认配置文件在   cloudGameConfig.ini文件中
 /// ////////////////
+///
+
+
+std::string ws2s(const std::wstring& ws)
+{
+    if (!ws.size()) {
+        return "";
+    }
+    std::string strLocale = setlocale(LC_ALL, "");
+    const wchar_t* wchSrc = ws.c_str();
+    size_t nDestSize = wcstombs(NULL, wchSrc, 0) + 1;
+    char *chDest = new char[nDestSize];
+    memset(chDest, 0, nDestSize);
+    wcstombs(chDest, wchSrc, nDestSize);
+    std::string strResult = chDest;
+    delete[]chDest;
+    setlocale(LC_ALL, strLocale.c_str());
+    return strResult;
+}
+
+std::wstring s2ws(const std::string &s)
+{
+    size_t i;
+    std::string curLocale = setlocale(LC_ALL, NULL);
+    setlocale(LC_ALL, "chs");
+    const char* _source = s.c_str();
+    size_t _dsize = s.size() + 1;
+    wchar_t* _dest = new wchar_t[_dsize];
+    wmemset(_dest, 0x0, _dsize);
+    mbstowcs_s(&i, _dest, _dsize, _source, _dsize);
+    std::wstring result = _dest;
+    delete[] _dest;
+    setlocale(LC_ALL, curLocale.c_str());
+    return result;
+}
+
 vector<string> split(const string& str, const string& delim) {
     vector<string> res;
     if ("" == str) return res;
@@ -285,9 +322,9 @@ QString AssembleWSServer(QString wsUrl ,  QString key , QString deviceNo){
 }
 
 ////////////
-KeyBoardThread::KeyBoardThread(QObject * parent ):QThread(parent) , m_threadFlag(false), m_wsUrl("") , m_loginCommand("")// , m_keyBoardConfig(nullptr)
+KeyBoardThread::KeyBoardThread(QObject * parent ):QThread(parent) , m_threadFlag(false), m_wsUrl("") , m_loginCommand(""),
+    m_wsBoostSocket(NULL)// , m_keyBoardConfig(nullptr)
 {
-
 
 }
 
@@ -295,321 +332,310 @@ KeyBoardThread::~KeyBoardThread(){
     if(m_keyBoardConfig.get()){
         m_keyBoardConfig.reset();
     }
-   if(m_threadFlag){
-        this->stop();
+   CloseWebsocket();
+}
+
+
+void KeyBoardThread::StartWebSocket(){
+    m_wsBoostSocket = std::make_shared<wsBoostConnect>();
+    m_wsBoostSocket->init(m_wsUrl.toStdString());
+    m_wsBoostSocket->connect();
+    m_wsBoostSocket->SetCallback(this);
+}
+
+void KeyBoardThread::CloseWebsocket(){
+    if(m_wsBoostSocket.get()){
+        if(m_wsBoostSocket->isConnected()){
+            m_wsBoostSocket->terminate();
+            m_wsBoostSocket->close();
+        }
     }
 }
 
 void KeyBoardThread::ConnectedCallback(std::string msg , int error){
     emit RecordSignal(UI_INFO ,QString("ws socket connect successful!").arg(msg.c_str()));
+    std::string loginCommand = m_loginCommand.toStdString();
+    if(m_wsBoostSocket.get()){
+        m_wsBoostSocket->Send(loginCommand);
+        emit RecordSignal(UI_INFO , "keyBoard thread start!");
+    }else{
+        emit RecordSignal(UI_INFO , "keyBoard thread is not started!");
+    }
 }
 
 void KeyBoardThread::DisconnectedCallback(std::string msg , int error){
      emit RecordSignal(UI_ERROR ,QString("ws socket  disconnect  %s!").arg(m_wsUrl.toStdString().c_str()));
 }
 
-void KeyBoardThread::MessageCallback(std::string msg , int error){
-
-}
-
-void KeyBoardThread::FailureCallback(std::string msg , int error){
-
-}
-
-void KeyBoardThread::InterruptCallback(std::string msg , int error){
-
-}
-
-void KeyBoardThread::run(){
-    std::string wsUrl= m_wsUrl.toStdString();
-    emit RecordSignal(UI_INFO ,QString("@@@@@%1 \n").arg(wsUrl.c_str()));
-    std::shared_ptr<WebSocket> ws(WebSocket::from_url(wsUrl));
-    if(!ws){
-        emit RecordSignal(UI_ERROR ,QString("ws init failure%1\n").arg(wsUrl.c_str()));
-        return;
-    }
-    std::string loginCommand = m_loginCommand.toStdString();
-    ws->send(loginCommand.c_str());
-    emit RecordSignal(UI_INFO ,QString("@@@@@%1 %2 \n").arg(loginCommand.c_str() , m_threadFlag?"1":"2"));
-    emit RecordSignal(UI_INFO , "keyBoard thread start!");
-    while (m_threadFlag) {
-        if(!(ws.get() && ws->getReadyState() != WebSocket::CLOSED)){
-            //reconnect
-            ws = std::shared_ptr<WebSocket>(WebSocket::from_url(wsUrl));
-            if(!ws){
-                emit RecordSignal(UI_ERROR ,QString("ws init failure%1\n").arg(wsUrl.c_str()));
-                return;
+void KeyBoardThread::MessageCallback(std::string message , int error){
+    if (message != "")
+    {
+        Json::Reader reader;
+        Json::Value root;
+        if (reader.parse(message, root))
+        {
+            std::string type = "";
+            if(root.isMember("type")){
+                type = root["type"].asString();
             }
-            ws->send(loginCommand.c_str());
-            emit RecordSignal(UI_INFO ,QString("@@@@@%1 %2 \n").arg(loginCommand.c_str() , m_threadFlag?"1":"2"));
-            emit RecordSignal(UI_INFO , "keyBoard thread start!");
-        }
-        WebSocket::pointer wsp = &*ws; // <-- because a unique_ptr cannot be copied into a lambda
-        ws->poll();
-        ws->dispatch([&](const std::string & message) {
-            emit RecordSignal(UI_INFO ,QString("%1 \n").arg(message.c_str()));
-            if (message != "")
-            {
-                Json::Reader reader;
-                Json::Value root;
-                if (reader.parse(message, root))
-                {
-                    std::string type = "";
-                    if(root.isMember("type")){
-                        type = root["type"].asString();
-                    }
-                    if(0 == type.compare("joystick") ){
-                        /// 摇杆
-                        //bool JoystickCtrl(int X, int Y, int Z, int rX, int rY, int rZ, int slider, int dial, int wheel, BYTE hat, BYTE buttons[16]);
-                        std::string key = "";
-                        if(root.isMember("key")){
-                           // key = root["key"].asString();
-                            if(! root["key"].empty()){
-                                Json::Value keyValue  = root["key"];
-                                float x = 0;
-                                if(keyValue.isObject()){
-                                    if(keyValue.isMember("x")){
-                                        x =keyValue["x"].asDouble();
-                                    }
-
-                                    float y = 0;
-                                    if(keyValue.isMember("y")){
-                                        y = keyValue["y"].asDouble();
-                                    }
-                                    float z = 0 ;
-                                    if(keyValue.isMember("z")){
-                                        z = keyValue["z"].asDouble();
-                                    }
-                                    float rX = 0;
-                                    if(keyValue.isMember("rx")){
-                                        rX = keyValue["rx"].asDouble();
-                                    }
-                                    float rY = 0;
-                                    if(keyValue.isMember("ry")){
-                                        rY = keyValue["ry"].asDouble();
-                                    }
-                                    float rZ = 0;
-                                    if(keyValue.isMember("rz")){
-                                        rZ = keyValue["rz"].asDouble();
-                                    }
-                                    int slider = 0;
-                                    if(keyValue.isMember("slider")){
-                                        slider = keyValue["slider"].asInt();
-                                    }
-                                    int dial = 0;
-                                    if(keyValue.isMember("dial")){
-                                        dial = keyValue["dial"].asInt();
-                                    }
-                                    int wheel =0;
-                                    if(keyValue.isMember("wheel")){
-                                        wheel = keyValue["wheel"].asInt();
-                                    }
-                                    int  hat = 0;
-                                    if(keyValue.isMember("hat")){
-                                        hat = keyValue["hat"].asInt();
-                                    }
-                                    std::string buttons = "";
-                                    if(keyValue.isMember("buttons")){
-                                        buttons = keyValue["buttons"].asString();
-                                    }
-
-                                    int mode = 0;
-                                    if(root.isMember("mode")){
-                                        mode = root["mode"].asInt();
-                                    }
-                                    BYTE *btn = new BYTE[16];
-                                    ConvertTheSpecialString(buttons , btn , 16);
-                                    BYTE hatByte;
-                                    //ConvertTheSpecialStringEx(hat , hatByte);
-                                    ConvertTheSpecialString(buttons , btn , 1);
-
-                                    JoystickParseMode(mode , x , y, z , rX, rY, rZ , slider , dial, wheel);
-                                    bitset<10> bit(hatByte);
-                                    string hatByteStr = bit.to_string();
-                                    emit RecordSignal(UI_INFO ,QString("x= %1  y=%2  z =%3  rx=%4 ry=%5 rz=%6  slider=%7 dial=%8 wheel=%9  hat=%10 btn=%11\n").arg(x ).arg(y).arg(z).arg(rX).arg(rY).arg(rZ).arg(slider).arg(dial).arg(wheel).arg( hatByteStr.c_str() ).arg( (char*)btn));
-                                    JoystickCtrl(x , y, z , rX, rY, rZ , slider , dial, wheel, hatByte , btn);
-                                    delete []  btn;
-                                    btn = nullptr;
-                                }
-                                }
-
-
-                        }
-
-                    }else{
-                        ////按键
-                        ///
-                        int controlType = root["mode"].asInt();
-                        if( 0 == controlType){//普通键盘按键
-                            int ud = root["ud"].asInt();
-                            if (ud == 1)
-                            {
-                                bool isInt =  root["key"].isInt();
-                                bool isString =root["key"].isString();
-                                int keyTemp = 0;
-                                if(isInt){
-                                    keyTemp = root["key"].asInt();
-                                }
-                                if(isString){
-                                    std::string key = root["key"].asString();
-                                    keyTemp = atoi(key.c_str());
-                                }
-                                KeyDown(keyTemp);
-                               // emit RecordSignal(UI_INFO ,QString( KEY DOWN: \n").arg(key.c_str()));
-                            }
-                            if (ud == 2)
-                            {
-                                bool isInt =  root["key"].isInt();
-                                bool isString =root["key"].isString();
-                                int keyTemp = 0;
-                                if(isInt){
-                                    keyTemp = root["key"].asInt();
-                                }
-                                if(isString){
-                                    std::string key = root["key"].asString();
-                                    keyTemp = atoi(key.c_str());
-                                }
-                                KeyUp(keyTemp);
-                                //emit RecordSignal(UI_INFO ,QString("KEY up: \n").arg(key.c_str()));
-                            }
-                            if (ud == 4)
-                            {
-                                string keycode = root["key"].asString();
-                                vector<string> AllStr = split(keycode, "|");
-                                  int x= atoi(AllStr[0].c_str());
-                                int y = atoi(AllStr[1].c_str());
-                                int key = atoi(AllStr[2].c_str());
-                                MouseMove(x, y, key);
-                            }
-                            if (ud == 6)
-                            {
-                                string keycode = root["key"].asString();
-                                vector<string> AllStr = split(keycode, "|");
-                                int x = atoi(AllStr[0].c_str());
-                                int y = atoi(AllStr[1].c_str());
-                                int key = atoi(AllStr[2].c_str());
-                                MouseDown(x, y, key);
-                                emit RecordSignal(UI_INFO ,QString("MouseDown up: \n").arg(keycode.c_str()));
-                            }
-                            if (ud == 7)
-                            {
-                                string keycode = root["key"].asString();
-                                vector<string> AllStr = split(keycode, "|");
-                                int x = atoi(AllStr[0].c_str());
-                                int y = atoi(AllStr[1].c_str());
-                                int key = atoi(AllStr[2].c_str());
-                                MouseUp(x, y, key);
-                                 emit RecordSignal(UI_INFO ,QString("MouseUp up: \n").arg(keycode.c_str()));
-                            }
-                        }else if(1 == controlType){/////手柄转换成键盘的按键
-                            int ud = root["ud"].asInt();
-                            float x  = 0.0 ;
-                            float y = 0.0;
-                            float z = 0.0;
-                            float rz = 0.0;
-                            std::string keyStr = "";
-                            Json::Value keyValue  = root["key"];
+            if(0 == type.compare("joystick") ){
+                /// 摇杆
+                //bool JoystickCtrl(int X, int Y, int Z, int rX, int rY, int rZ, int slider, int dial, int wheel, BYTE hat, BYTE buttons[16]);
+                std::string key = "";
+                if(root.isMember("key")){
+                   // key = root["key"].asString();
+                    if(! root["key"].empty()){
+                        Json::Value keyValue  = root["key"];
+                        float x = 0;
+                        if(keyValue.isObject()){
                             if(keyValue.isMember("x")){
-                                x = keyValue["x"].asDouble();
+                                x =keyValue["x"].asDouble();
                             }
+
+                            float y = 0;
                             if(keyValue.isMember("y")){
                                 y = keyValue["y"].asDouble();
                             }
+                            float z = 0 ;
                             if(keyValue.isMember("z")){
                                 z = keyValue["z"].asDouble();
                             }
+                            float rX = 0;
+                            if(keyValue.isMember("rx")){
+                                rX = keyValue["rx"].asDouble();
+                            }
+                            float rY = 0;
+                            if(keyValue.isMember("ry")){
+                                rY = keyValue["ry"].asDouble();
+                            }
+                            float rZ = 0;
                             if(keyValue.isMember("rz")){
-                                rz = keyValue["rz"].asDouble();
+                                rZ = keyValue["rz"].asDouble();
+                            }
+                            int slider = 0;
+                            if(keyValue.isMember("slider")){
+                                slider = keyValue["slider"].asInt();
+                            }
+                            int dial = 0;
+                            if(keyValue.isMember("dial")){
+                                dial = keyValue["dial"].asInt();
+                            }
+                            int wheel =0;
+                            if(keyValue.isMember("wheel")){
+                                wheel = keyValue["wheel"].asInt();
+                            }
+                            int  hat = 0;
+                            if(keyValue.isMember("hat")){
+                                hat = keyValue["hat"].asInt();
+                            }
+                            std::string buttons = "";
+                            if(keyValue.isMember("buttons")){
+                                buttons = keyValue["buttons"].asString();
                             }
 
-                            if(keyValue.isMember("key")){
-                                keyStr = keyValue["key"].asString();
+                            int mode = 0;
+                            if(root.isMember("mode")){
+                                mode = root["mode"].asInt();
                             }
-                            ////方向按键
-                            if(!m_keyBoardConfig.get()){
-                                emit RecordSignal(UI_INFO ,QString("m_keyBoardConfig is nullptr  should touch keyboard configure file !\n"));
-                                return;
-                            }
-                            int xyKey = m_keyBoardConfig->ConvertXYDirection(x, y , ud);
-                            float tempZ = z;
-                            float tempRz = rz;
-                            m_keyBoardConfig->ConvertMouse(tempZ , tempRz);
-                            ///鼠标
-                            ///按键
-                            switch(ud){
-                                case 1:{ //按下
-                                        if(keyValue.isMember("key")){
-                                            bool isInt =  keyValue["key"].isInt();
-                                            bool isString =keyValue["key"].isString();
-                                            int keyTemp = 0;
-                                            if(isInt){
-                                                keyTemp = keyValue["key"].asInt();
-                                            }
-                                            if(isString){
-                                                std::string key = keyValue["key"].asString();
-                                                keyTemp = atoi(key.c_str());
-                                            }
-                                            if(0 != keyTemp){
-                                                emit RecordSignal(UI_INFO ,QString("keydown normal keyTemp=%1").arg(keyTemp));
-                                                m_keyBoardConfig->KeyDown_C(keyTemp);
-                                            }
-                                            //}
+                            BYTE *btn = new BYTE[16];
+                            ConvertTheSpecialString(buttons , btn , 16);
+                            BYTE hatByte;
+                            //ConvertTheSpecialStringEx(hat , hatByte);
+                            ConvertTheSpecialString(buttons , btn , 1);
+
+                            JoystickParseMode(mode , x , y, z , rX, rY, rZ , slider , dial, wheel);
+                            bitset<10> bit(hatByte);
+                            string hatByteStr = bit.to_string();
+                            emit RecordSignal(UI_INFO ,QString("x= %1  y=%2  z =%3  rx=%4 ry=%5 rz=%6  slider=%7 dial=%8 wheel=%9  hat=%10 btn=%11\n").arg(x ).arg(y).arg(z).arg(rX).arg(rY).arg(rZ).arg(slider).arg(dial).arg(wheel).arg( hatByteStr.c_str() ).arg( (char*)btn));
+                            JoystickCtrl(x , y, z , rX, rY, rZ , slider , dial, wheel, hatByte , btn);
+                            delete []  btn;
+                            btn = nullptr;
+                        }
+                        }
+
+
+                }
+
+            }else{
+                ////按键
+                ///
+                int controlType = root["mode"].asInt();
+                if( 0 == controlType){//普通键盘按键
+                    int ud = root["ud"].asInt();
+                    if (ud == 1)
+                    {
+                        bool isInt =  root["key"].isInt();
+                        bool isString =root["key"].isString();
+                        int keyTemp = 0;
+                        if(isInt){
+                            keyTemp = root["key"].asInt();
+                        }
+                        if(isString){
+                            std::string key = root["key"].asString();
+                            keyTemp = atoi(key.c_str());
+                        }
+                        KeyDown(keyTemp);
+                       // emit RecordSignal(UI_INFO ,QString( KEY DOWN: \n").arg(key.c_str()));
+                    }
+                    if (ud == 2)
+                    {
+                        bool isInt =  root["key"].isInt();
+                        bool isString =root["key"].isString();
+                        int keyTemp = 0;
+                        if(isInt){
+                            keyTemp = root["key"].asInt();
+                        }
+                        if(isString){
+                            std::string key = root["key"].asString();
+                            keyTemp = atoi(key.c_str());
+                        }
+                        KeyUp(keyTemp);
+                        //emit RecordSignal(UI_INFO ,QString("KEY up: \n").arg(key.c_str()));
+                    }
+                    if (ud == 4)
+                    {
+                        string keycode = root["key"].asString();
+                        vector<string> AllStr = split(keycode, "|");
+                          int x= atoi(AllStr[0].c_str());
+                        int y = atoi(AllStr[1].c_str());
+                        int key = atoi(AllStr[2].c_str());
+                        MouseMove(x, y, key);
+                    }
+                    if (ud == 6)
+                    {
+                        string keycode = root["key"].asString();
+                        vector<string> AllStr = split(keycode, "|");
+                        int x = atoi(AllStr[0].c_str());
+                        int y = atoi(AllStr[1].c_str());
+                        int key = atoi(AllStr[2].c_str());
+                        MouseDown(x, y, key);
+                        emit RecordSignal(UI_INFO ,QString("MouseDown up: \n").arg(keycode.c_str()));
+                    }
+                    if (ud == 7)
+                    {
+                        string keycode = root["key"].asString();
+                        vector<string> AllStr = split(keycode, "|");
+                        int x = atoi(AllStr[0].c_str());
+                        int y = atoi(AllStr[1].c_str());
+                        int key = atoi(AllStr[2].c_str());
+                        MouseUp(x, y, key);
+                         emit RecordSignal(UI_INFO ,QString("MouseUp up: \n").arg(keycode.c_str()));
+                    }
+                }else if(1 == controlType){/////手柄转换成键盘的按键
+                    int ud = root["ud"].asInt();
+                    float x  = 0.0 ;
+                    float y = 0.0;
+                    float z = 0.0;
+                    float rz = 0.0;
+                    std::string keyStr = "";
+                    Json::Value keyValue  = root["key"];
+                    if(keyValue.isMember("x")){
+                        x = keyValue["x"].asDouble();
+                    }
+                    if(keyValue.isMember("y")){
+                        y = keyValue["y"].asDouble();
+                    }
+                    if(keyValue.isMember("z")){
+                        z = keyValue["z"].asDouble();
+                    }
+                    if(keyValue.isMember("rz")){
+                        rz = keyValue["rz"].asDouble();
+                    }
+
+                    if(keyValue.isMember("key")){
+                        keyStr = keyValue["key"].asString();
+                    }
+                    ////方向按键
+                    if(!m_keyBoardConfig.get()){
+                        emit RecordSignal(UI_INFO ,QString("m_keyBoardConfig is nullptr  should touch keyboard configure file !\n"));
+                        return;
+                    }
+                    int xyKey = m_keyBoardConfig->ConvertXYDirection(x, y , ud);
+                    float tempZ = z;
+                    float tempRz = rz;
+                    m_keyBoardConfig->ConvertMouse(tempZ , tempRz);
+                    ///鼠标
+                    ///按键
+                    switch(ud){
+                        case 1:{ //按下
+                                if(keyValue.isMember("key")){
+                                    bool isInt =  keyValue["key"].isInt();
+                                    bool isString =keyValue["key"].isString();
+                                    int keyTemp = 0;
+                                    if(isInt){
+                                        keyTemp = keyValue["key"].asInt();
                                     }
-                                }
-                                break;
-                                case 2:{//抬起
-                                        if(keyValue.isMember("key")){
-                                            bool isInt =  keyValue["key"].isInt();
-                                            bool isString =keyValue["key"].isString();
-                                            int keyTemp = 0;
-                                            if(isInt){
-                                                keyTemp = keyValue["key"].asInt();
-                                            }
-                                            if(isString){
-                                                std::string key = keyValue["key"].asString();
-                                                keyTemp = atoi(key.c_str());
-                                            }
-                                            if(0 != keyTemp){
-                                                emit RecordSignal(UI_INFO ,QString("keyup keyTemp=%1").arg(keyTemp));
-                                                m_keyBoardConfig->KeyUP_C(keyTemp);
-                                            }
-                                        //}
-                                        }
-                                        else if( 0 ==x  && 0 == y){
-                                                m_keyBoardConfig->DirectionAllUp();
-                                        }
-
-                                }
-                                break;
-                                case 4:{
-                                    emit RecordSignal(UI_INFO ,QString("mouse move z=%1 rz=%2 !").arg(z).arg(rz));
-                                    m_keyBoardConfig->MouseMove_C(tempZ, tempRz, 0);//摇杆没有鼠标左中右按键
-                                }
-                                break;
-                                case 6:{
-
-                                }
-                                break;
-                                case 7:{
-
-                                }
-                                break;
-                                default:
-                                {
-                                   break;
-                                }
+                                    if(isString){
+                                        std::string key = keyValue["key"].asString();
+                                        keyTemp = atoi(key.c_str());
+                                    }
+                                    if(0 != keyTemp){
+                                        emit RecordSignal(UI_INFO ,QString("keydown normal keyTemp=%1").arg(keyTemp));
+                                        m_keyBoardConfig->KeyDown_C(keyTemp);
+                                    }
+                                    //}
                             }
+                        }
+                        break;
+                        case 2:{//抬起
+                                if(keyValue.isMember("key")){
+                                    bool isInt =  keyValue["key"].isInt();
+                                    bool isString =keyValue["key"].isString();
+                                    int keyTemp = 0;
+                                    if(isInt){
+                                        keyTemp = keyValue["key"].asInt();
+                                    }
+                                    if(isString){
+                                        std::string key = keyValue["key"].asString();
+                                        keyTemp = atoi(key.c_str());
+                                    }
+                                    if(0 != keyTemp){
+                                        emit RecordSignal(UI_INFO ,QString("keyup keyTemp=%1").arg(keyTemp));
+                                        m_keyBoardConfig->KeyUP_C(keyTemp);
+                                    }
+                                //}
+                                }
+                                else if( 0 ==x  && 0 == y){
+                                        m_keyBoardConfig->DirectionAllUp();
+                                }
+
+                        }
+                        break;
+                        case 4:{
+                            emit RecordSignal(UI_INFO ,QString("mouse move z=%1 rz=%2 !").arg(z).arg(rz));
+                            m_keyBoardConfig->MouseMove_C(tempZ, tempRz, 0);//摇杆没有鼠标左中右按键
+                        }
+                        break;
+                        case 6:{
+
+                        }
+                        break;
+                        case 7:{
+
+                        }
+                        break;
+                        default:
+                        {
+                           break;
                         }
                     }
                 }
             }
-        });
+        }
     }
-    ws->close();
-    emit RecordSignal(UI_INFO , "keyBoard thread quit!");
-    if(m_keyBoardConfig.get()){
-        m_keyBoardConfig.reset();
-    }
+}
+
+void KeyBoardThread::FailureCallback(std::string msg , int error){
+    emit RecordSignal(UI_ERROR ,QString("ws socket occure failure  %s!").arg(m_wsUrl.toStdString().c_str()));
+}
+
+void KeyBoardThread::InterruptCallback(std::string msg , int error){
+    emit RecordSignal(UI_ERROR ,QString("ws socket occure Interrupt  %s!").arg(m_wsUrl.toStdString().c_str()));
+}
+
+void KeyBoardThread::run(){
+    CloseWebsocket();
+    StartWebSocket();
 }
 
 
@@ -622,47 +648,55 @@ bool KeyBoardThread::start(QString wsUrl , QString loginCommand){
         }
         return false;
     }
-    if(m_threadFlag){
-        //this->quit();
-        this->stop();
-    }
+//    if(m_threadFlag){
+//        //this->quit();
+//        this->stop();
+//    }
     m_wsUrl = wsUrl;
     m_loginCommand = loginCommand;
 
-    m_threadFlag = true;
-    //Sleep(1000);
-//    if(!KeyMouseInit()){
-//        if(g_This){
-//            g_This->addLogToEdit(UI_ERROR , "KeyMouseInit failure!");
-//        }
-//         return false;
-//    }else{
-//        if(g_This){
-//            g_This->addLogToEdit(UI_INFO , "KeyMouseInit success!");
-//        }
-//    }
+    //m_threadFlag = true;
+    Sleep(1000);
+    if(!KeyMouseInit()){
+        if(g_This){
+            g_This->addLogToEdit(UI_ERROR , "KeyMouseInit failure!");
+        }
+         //return false;
+    }else{
+        if(g_This){
+            g_This->addLogToEdit(UI_INFO , "KeyMouseInit success!");
+        }
+    }
 
     QThread::start();
     return true;
 }
 
 bool  KeyBoardThread::stop(){
-//        if(!KeyMouseClose()){
-//            //QMessageBox::information(NULL , "error!" , "KeyMouseClose failure!");
-//            g_This->addLogToEdit(UI_ERROR, "KeyMouseClose failure!!");
-//            //return false;
-//        }
-    if(m_threadFlag){
-        m_threadFlag= false;
-        if(isRunning()){
-            wait();
+        if(!KeyMouseClose()){
+            //QMessageBox::information(NULL , "error!" , "KeyMouseClose failure!");
+            g_This->addLogToEdit(UI_ERROR, "KeyMouseClose failure!!");
+            //return false;
         }
-        return true;
-    }else{
-        //QMessageBox::information(NULL , "error!" , "no KeyBoardThread is running!");
-        g_This->addLogToEdit(UI_ERROR, "no KeyBoardThread is running!");
-        return false;
+//    if(m_threadFlag){
+//        m_threadFlag= false;
+//        if(isRunning()){
+//            wait();
+//        }
+//        CloseWebsocket();
+//        return true;
+//    }else{
+//        //QMessageBox::information(NULL , "error!" , "no KeyBoardThread is running!");
+//        g_This->addLogToEdit(UI_ERROR, "no KeyBoardThread is running!");
+//        CloseWebsocket();
+//        return false;
+//    }
+    if(isRunning()){
+        wait();
     }
+    CloseWebsocket();
+    g_This->addLogToEdit(UI_ERROR, " KeyBoardThread quit!");
+    return true;
 }
 ///
 void KeyBoardThread::SetKeyBoardModel(QString nameKeyTablePath , QString defaultKeyBoardPath , QString gameKeyBoardPath){
@@ -711,7 +745,7 @@ CloudStreamer::CloudStreamer(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::CloudStreamer), m_isInstallDriver(false) , m_isPushStream(false) , m_isOpenKeyBoard(false),m_isWin32Init(false),
     m_keyBoardthreadFlag(false), m_keyBoardThread(nullptr),m_gamePath(""),m_fileSavePath(""),m_mode(DEFAULT_MODE),
-    m_sessionId(""), m_deviceNo(""), m_controlUrl("") , m_file(NULL)
+    m_sessionId(""), m_deviceNo(""), m_controlUrl("") , m_file(NULL), m_gameStatusTimer(NULL)
 {
     ui->setupUi(this);
     ///////////init winsocket 32
@@ -764,11 +798,11 @@ CloudStreamer::CloudStreamer(QWidget *parent) :
     g_This = this;
     SetRunLogCallback(DllLogCallback);
     //StopGameCallback("{\"gameId\":\"1\",\"roomId\":\"io3ilhgr\",\"peerId\":\"xozk2qaw\",\"videoIp\":\"124.71.159.87\",\"videoPort\":\"4443\",\"keyboardIp\":\"124.71.159.87\",\"keyboardPort\":\"4455\"}");
-    if(!KeyMouseInit()){
-            addLogToEdit(UI_ERROR , "KeyMouseInit failure!");
-    }else{
-            addLogToEdit(UI_INFO , "KeyMouseInit success!");
-    }
+//    if(!KeyMouseInit()){
+//            addLogToEdit(UI_ERROR , "KeyMouseInit failure!");
+//    }else{
+//            addLogToEdit(UI_INFO , "KeyMouseInit success!");
+//    }
     //////////
     m_file = fopen("c:\\cloudStreamer.txt" , "w+");
 }
@@ -790,11 +824,17 @@ CloudStreamer::~CloudStreamer()
         disconnect(m_keyBoardThread.get() , SIGNAL(RecordSignal(QString , QString)) , this , SLOT(RecordSignalCallBack(QString , QString )));
         m_keyBoardThread.reset();
     }
-    if(!KeyMouseClose()){
-        addLogToEdit(UI_ERROR, "KeyMouseClose failure!!");
-    }
+//    if(!KeyMouseClose()){
+//        addLogToEdit(UI_ERROR, "KeyMouseClose failure!!");
+//    }
     if(m_file){
         fclose(m_file);
+    }
+
+    if(m_gameStatusTimer.get()){
+        m_gameStatusTimer = std::make_shared<QTimer>();
+        m_gameStatusTimer->stop();
+        connect(m_gameStatusTimer.get() , SIGNAL(timeout()) , this , SLOT(on_game_status_timer()));
     }
     delete ui;
 }
@@ -1127,6 +1167,13 @@ void CloudStreamer::DisconnectCallback(QString url, QString data){
 
 }
 
+void CloudStreamer::on_game_status_timer(){
+    QString gamePath = GetGamePathByID(m_gameId);
+    QString  testStr = WSServiceTransferSignStringEx(m_deviceNo , m_sessionId , m_gameId ,gamePath);
+    emit m_cloudGameServiceIterator->Send(testStr);
+    addLogToEdit(UI_INFO , QString("send GameReportDeviceState status: %1").arg(testStr));
+}
+
 void CloudStreamer::StartGameCallback(QString data){
     addLogToEdit(UI_INFO , data);
     //QMessageBox::information(NULL , "information!" , "StartGameCallback");
@@ -1135,6 +1182,7 @@ void CloudStreamer::StartGameCallback(QString data){
         Json::Value root;
         if (reader.parse(data.toStdString(), root)){
            QString gameId = root["gameId"].asCString();
+           m_gameId = gameId;
            //QString startGameParams = root["startGameParams"].asCString();
            QString roomId = root["roomId"].asCString();
 
@@ -1181,6 +1229,17 @@ void CloudStreamer::StartGameCallback(QString data){
                addLogToEdit(UI_ERROR , "StartGameCallback json param format failure!");
                return ;
            }
+           /////////
+           ////////loginParam port replace to deviceNo
+           if(gameId.isEmpty()  || startGameParams.isEmpty()){
+                addLogToEdit(UI_INFO , "gameId or  startGameParams is empty!\n");
+           }
+           QString gamePath = GetGamePathByID(gameId);
+           if(!gamePath.isEmpty()){
+               StartGame(gamePath.toLocal8Bit().data() , startGameParams.toLocal8Bit().data());
+               addLogToEdit(UI_INFO ,QString("%1 game start success!\n").arg(gamePath));
+           }
+           /////////////
            QString domain = serverUrl;
            QString pushUrl = "https://";
            serverUrl = pushUrl + serverUrl;
@@ -1226,15 +1285,6 @@ void CloudStreamer::StartGameCallback(QString data){
            m_keyBoardThread->start(/*controlUrl*/wsUrl ,keyboardLoginParams);
            ui->label_16->setText("start!");
            addLogToEdit(UI_INFO , "keyBoard connection finish!\n");
-           ////////loginParam port replace to deviceNo
-           if(gameId.isEmpty()  || startGameParams.isEmpty()){
-                addLogToEdit(UI_INFO , "gameId or  startGameParams is empty!\n");
-           }
-           QString gamePath = GetGamePathByID(gameId);
-           if(!gamePath.isEmpty()){
-               StartGame(gamePath.toLocal8Bit().data() , startGameParams.toLocal8Bit().data());
-               addLogToEdit(UI_INFO ,QString("%1 game start success!\n").arg(gamePath));
-           }
         }
     }
 }
@@ -1279,6 +1329,7 @@ QString CloudStreamer::GetGamePathByID(QString gameId){
 void CloudStreamer::StopGameCallback(QString data){
     //QMessageBox::information(NULL , "information!" , "StopGameCallback");
     ui->pushButton_3->clicked();
+    m_gameId.clear();
     if(!data.isEmpty()){
         Json::Reader reader;
         Json::Value root;
@@ -1347,16 +1398,31 @@ void CloudStreamer::CloseStreamCallback(QString streamParams){
     //QMessageBox::information(NULL , "information!" , "CloseStreamCallback");
 }
 
+int generateRandomNumber(){
+        int tag[]={0,0,0,0,0,0,0,0,0,0};
+        int four=0;
+        int temp=10;
+
+        while(four<1000){
+            //设置随机数种子,否则每次得到的随机数都相同使得"不随机"
+            qsrand(QTime(0,0,0).secsTo(QTime::currentTime()));
+            temp=qrand()%10;//随机获取0~9的数字
+            if(tag[temp]==0){
+                four+=temp;
+                four*=10;
+                tag[temp]=1;
+            }
+        }
+        return four;
+}
+
 QString  WSServiceTransferSignString(QString &deviceNo){
     ///
     Json::Value root;
     Json::Value data;
     ////////
     int ret = -1;
-    QTime time;
-    time= QTime::currentTime();
-    qsrand(time.msec()+time.second()*1000);
-    QString noncestrQt = QString("%1").arg(qrand());
+    QString noncestrQt = QString("%1").arg(generateRandomNumber());
     root["noncestr"] = noncestrQt.toLocal8Bit().data();
 
     QDateTime dateTime = QDateTime::currentDateTime();
@@ -1397,13 +1463,111 @@ QString  WSServiceTransferSignString(QString &deviceNo){
 }
 
 
+bool isProcessRunning(QString processName)
+{
+    PROCESSENTRY32 pe;
+        DWORD id = 0;
+        HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+        pe.dwSize = sizeof(PROCESSENTRY32);
+        if (!Process32First(hSnapshot, &pe))
+            //LogEx(UI_ERROR , "GetProcessidFromName Process32First is failure!");
+            return false;
+        while (1)
+        {
+            pe.dwSize = sizeof(PROCESSENTRY32);
+            if (Process32Next(hSnapshot, &pe) == FALSE) {
+                //LogEx(g_UI_ERROR, "GetProcessidFromName  result is false!");
+                break;
+            }
+            std::string path1 = processName.toStdString();
+            std::wstring path = s2ws(path1);
+            if (lstrcmp(pe.szExeFile, path.c_str()) == 0)
+            {
+                id = pe.th32ProcessID;
+                //LogEx(g_UI_ERROR, "GetProcessidFromName  result is true!");
+                break;
+            }
+        }
+        CloseHandle(hSnapshot);
+        return id > 0 ? true:false;
+}
+
+QString  WSServiceTransferSignStringEx(QString &deviceNo, QString sessionId , QString gameId , QString gamePath){
+    ///
+    Json::Value root;
+    Json::Value data;
+    ////////
+    int ret = -1;
+    QTime time;
+    time= QTime::currentTime();
+    qsrand(time.msec()+time.second()*1000);
+    QString noncestrQt = QString("%1").arg(qrand());
+    root["noncestr"] = noncestrQt.toLocal8Bit().data();
+
+    QDateTime dateTime = QDateTime::currentDateTime();
+    QString timestamp = dateTime.toString("yyyy-MM-dd hh:mm:ss.zzz");
+    //int ms = dateTime.time().msec();
+    qint64 epochTime = dateTime.toMSecsSinceEpoch();
+    QString epochTimeStr = QString("%1").arg(epochTime);
+    root["timestamp"] = epochTimeStr.toLocal8Bit().data();
+    QString signStr = epochTimeStr  + g_signKey +  noncestrQt;
+    QString signStrMd5 = QCryptographicHash::hash(signStr.toLatin1(),QCryptographicHash::Md5).toHex();
+    root["sign"] =signStrMd5.toLocal8Bit().data();
+    root["type"] = "GameReportDeviceState";
+    root["sessionId"] = sessionId.toStdString().c_str();
+    ////////
+    QString deviceNoStr = "";//noncestrQt + epochTimeStr;
+    FILE * file = NULL;
+    file = fopen("c:\\testDeviceNo.txt" , "r");
+    if(file){
+        //求得文件的大小
+        fseek(file, 0, SEEK_END);
+        int size = ftell(file);
+        rewind(file);
+        //申请一块能装下整个文件的空间
+        char* ar = (char*)malloc(sizeof(char)*size);
+        //读文件
+        fread(ar,1,size,file);//每次读一个，共读size次
+        ar[size] = '\0';
+        deviceNoStr = ar;
+        fclose(file);
+    }
+    deviceNo = deviceNoStr;
+    data["deviceNo"] = deviceNoStr.toLocal8Bit().data();
+    data["gameId"] = gameId.toStdString().c_str();
+    int gameIsRunning = 0 ;
+    ///////////////
+    if(!gamePath.isEmpty()){
+       ///get game name
+       QFileInfo fileInfo= QFileInfo(gamePath);
+       if(fileInfo.isExecutable()){
+           QString gameName = fileInfo.fileName();
+           ////////////
+           if(isProcessRunning(gameName.toStdString().c_str())){
+               gameIsRunning = 1;
+           }
+       }
+    }
+    data["status"] = gameIsRunning ? 1 : 0;
+    //////////////////
+    root["data"] = data;
+    ////////
+    Json::FastWriter styled_write;
+    std::string rootJsonStr = styled_write.write(root);
+    return QString("%1").arg(rootJsonStr.c_str());
+}
+
+
 
 
 void CloudStreamer::SignInWsService(){
     if(m_cloudGameServiceIterator.get()){
         QString  signInStr =  WSServiceTransferSignString(m_deviceNo);
         addLogToEdit(UI_INFO , QString("SignInWsService success %1").arg(signInStr));
+
+
         emit m_cloudGameServiceIterator->Send(signInStr);
+        //emit m_cloudGameServiceIterator->Send(testStr);
     }
 }
 
@@ -1428,6 +1592,14 @@ void CloudStreamer::SignInCloudGameCallback(QString paramData){
     }else{
         addLogToEdit(UI_ERROR , "SignInCloudGameCallback parse json  failure !");
     }
+    //////
+    ///start gamestatus start timer
+    if(!m_gameStatusTimer.get()){
+        m_gameStatusTimer = std::make_shared<QTimer>();
+        m_gameStatusTimer->start(30000);
+        connect(m_gameStatusTimer.get() , SIGNAL(timeout()) , this , SLOT(on_game_status_timer()));
+    }
+    ///////////
 }
 
 void CloudStreamer::RecordSignalCallBack(QString flagStr , QString logStr){
@@ -1460,6 +1632,10 @@ void CloudStreamer::ParseMessageCallback(QString data){
                         StopGameCallback(rootJsonStr.c_str());
                    }else if(msgType.compare("SignIn") == 0){//signIn
                         SignInCloudGameCallback(rootJsonStr.c_str());
+                        QString gamePath = GetGamePathByID(m_gameId);
+                        QString  testStr = WSServiceTransferSignStringEx(m_deviceNo , m_sessionId , m_gameId ,gamePath);
+                        emit m_cloudGameServiceIterator->Send(testStr);
+                        addLogToEdit(UI_INFO , QString("send GameReportDeviceState status: %1").arg(testStr));
                    }
                 }
             }

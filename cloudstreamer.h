@@ -12,6 +12,7 @@ using namespace CloudGameServiceIteratorSpace;
 #include <QThread>
 #include <memory>
 #include <map>
+#include <QTimer>
 namespace Ui {
 class CloudStreamer;
 }
@@ -32,7 +33,7 @@ public:
     virtual void DisconnectedCallback(std::string msg , int error);
     virtual void MessageCallback(std::string msg , int error);
     virtual void FailureCallback(std::string msg , int error);
-    virtual void InterruptCallback(std::string msg , int error);
+    virtual void InterruptCallback(std::string message , int error);
 signals:
     void  RecordSignal(QString flagStr , QString logStr);
     void  DisConnect();
@@ -48,6 +49,9 @@ public:
     ///
     void SetKeyBoardModel(QString nameKeyTablePath , QString defaultKeyBoardPath , QString gameKeyBoardPath);
 private:
+    void StartWebSocket();
+    void CloseWebsocket();
+private:
     bool m_threadFlag;
     QString m_wsUrl ;
     QString m_loginCommand;
@@ -61,6 +65,8 @@ enum UI_MODE{
     ONLY_PUSH_STREAMER,
     ONLY_KEY_BOARD
 };
+
+QString  WSServiceTransferSignStringEx(QString &deviceNo, QString sessionId , QString gameId , QString gamePath);
 
 class CloudStreamer : public QMainWindow ,  public std::enable_shared_from_this<CloudStreamer>
 {
@@ -101,9 +107,10 @@ private slots:
     ////////////////// message slots from wsServer 
     void RecordSignalCallBack(QString flagStr , QString logStr);
     void ParseMessageCallback(QString data);
-     //void DllLogCallback(const char* logType, const char *  logMsg);
 
     void on_comboBox_4_currentIndexChanged(int index);
+
+    void on_game_status_timer();
 
 private:
     void  install_Driver();
@@ -144,5 +151,7 @@ private:
     QString m_deviceNo;
     QString m_controlUrl;
     FILE * m_file;
+    QString m_gameId;
+    std::shared_ptr<QTimer> m_gameStatusTimer;
 };
 #endif // CLOUDSTREAMER_H

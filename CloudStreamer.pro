@@ -125,8 +125,10 @@ LIBS += \
       -lUser32 \
       -lDbghelp
 
-LIBS +=-L$$WEBSOCKET_LIBS_PATH
+LIBS += $$WEBSOCKET_LIBS_PATH\libboost_random-vc140-mt-gd-x64-1_75.lib
+LIBS += $$WEBSOCKET_LIBS_PATH\libboost_date_time-vc140-mt-gd-x64-1_75.lib
+LIBS += $$WEBSOCKET_LIBS_PATH\libboost_regex-vc140-mt-gd-x64-1_75.lib
 DISTFILES += \
-    cloudGame/include/lib_json/sconscript
+    cloudGame/include/lib_json/sconsc4ript
 
 msvc:QMAKE_CXXFLAGS += -execution-charset:utf-8
