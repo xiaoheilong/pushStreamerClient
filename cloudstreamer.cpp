@@ -1223,16 +1223,6 @@ void CloudStreamer::StartGameCallback(QString data){
            QString gamePath = GetGamePathByID(gameId);
            if(!gamePath.isEmpty()){
                  StartGame(gamePath.toLocal8Bit().data() , startGameParams.toLocal8Bit().data());
-//               QProcess p(NULL);
-//              // p.setWorkingDirectory(scriptFolder);
-//               QString command = gamePath + " " + startGameParams;
-//               p.start(command);
-//               if(p.waitForFinished()){
-//                   addLogToEdit(UI_INFO ,QString("%1 game start success!\n").arg(gamePath));
-//               }else{
-//                   addLogToEdit(UI_INFO ,QString("%1 game start failure!\n").arg(gamePath));
-//               }
-
            }
            /////////////
            QString domain = serverUrl;
