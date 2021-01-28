@@ -15,7 +15,7 @@
 //#include "windows.h"
 
 
-WsServiceCloudGameThread::WsServiceCloudGameThread(QObject * parent):QThread(parent), m_wsUrl(""), m_loginCommand(""){
+WsServiceCloudGameThread::WsServiceCloudGameThread(QObject * parent):QThread(parent), m_wsUrl(""), m_loginCommand(""),m_activeDisconnect(false){
     m_wsSocket.reset();
 }
 
@@ -25,16 +25,13 @@ WsServiceCloudGameThread::~WsServiceCloudGameThread(){
 }
 
 void WsServiceCloudGameThread::ConnectedCallback(std::string msg , int error) {
-//    if (msg != "")
-//    {
-//        QString message = msg.c_str();
-//        emit Parse(message);
-//    }
+    m_activeDisconnect = false;
 }
 
 void WsServiceCloudGameThread::DisconnectedCallback(std::string msg , int error){
-    int a =0;
-    a++;
+    if(!m_activeDisconnect){
+        ConnectWS(m_wsUrl , m_loginCommand);
+    }
 }
 
 void WsServiceCloudGameThread::MessageCallback(std::string msg , int error) {
@@ -46,13 +43,15 @@ void WsServiceCloudGameThread::MessageCallback(std::string msg , int error) {
 }
 
 void WsServiceCloudGameThread::FailureCallback(std::string msg , int error) {
-    int a =0;
-    a++;
+    if(!m_activeDisconnect){
+        ConnectWS(m_wsUrl , m_loginCommand);
+    }
 }
 
 void WsServiceCloudGameThread::InterruptCallback(std::string msg , int error) {
-    int a =0;
-    a++;
+    if(!m_activeDisconnect){
+        ConnectWS(m_wsUrl , m_loginCommand);
+    }
 }
 
 void WsServiceCloudGameThread::run(){
@@ -70,7 +69,7 @@ int WsServiceCloudGameThread::ConnectWS(QString  wsServerUrl , QString loginPara
 }
 
 int WsServiceCloudGameThread::DisconnectWS(){
-    //m_threadFlag = false;
+    m_activeDisconnect = true;
     if(isRunning()){
         wait();
     }

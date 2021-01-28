@@ -9,7 +9,7 @@
 #else
 #define CLOUDGAME_API __declspec(dllimport)
 #endif
-typedef void(*LogCallback)(const char* logType, const char *  logMsg);
+typedef void(*LogCallback)(std::string  logType, std::string  logMsg);
 // 此类是从 dll 导出的
 class CLOUDGAME_API CCloudGame {
 public:
@@ -109,3 +109,5 @@ CLOUDGAME_API void SetGStreamerLogPath(char *  logFilePath);
 //	00000010 00000001 00000000 00000000…00000000 : 按下按钮2和9.
 //	00000000 00000000 00000000 00000000…00000001 : 按下按钮128.
 CLOUDGAME_API bool JoystickCtrl(int X, int Y, int Z, int rX, int rY, int rZ, int slider, int dial, int wheel, BYTE hat, BYTE buttons[16]);
+
+CLOUDGAME_API bool KeyMouseIsValid(void);

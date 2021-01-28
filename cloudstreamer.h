@@ -131,6 +131,7 @@ public:
     void  addLogToEdit(QString flagStr , QString logStr);//添加一条日志到日志
 protected:
     QString GetGamePathByID(QString gameId);
+    QString GetGameStopByID(QString gameId);
     QString GetValueByGameID(QString gameId , QString keyName);
 private:
     Ui::CloudStreamer *ui;

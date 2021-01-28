@@ -1,6 +1,7 @@
 ﻿#include "cloudstreamer.h"
 #include "wsservice.h"
 #include "json/json.h"
+#include "CloudGame.h"
 #include <QApplication>
 #include <QTextCodec>
 #include <QMessageBox>
@@ -126,6 +127,10 @@ int GenerateMiniDump(PEXCEPTION_POINTERS pExceptionPointers)
     p.execute(c);
     p.close();
 
+    if(KeyMouseIsValid()){
+        KeyMouseClose();
+    }
+
     if(wsServiceCloudGame.get()){
         wsServiceCloudGame->DisconnectWS();
     }
@@ -198,7 +203,6 @@ int main(int argc, char *argv[])
     SetUnhandledExceptionFilter((LPTOP_LEVEL_EXCEPTION_FILTER)(GenerateMiniDump));
     CloudStreamer w;
     //w.SetUIModel(UI_MODE::ONLY_PUSH_STREAMER);
-    ///////
     //int rerun = GetProcessidFromName(L"gst-launch-1.0.exe");
     //////////////service bind
     std::shared_ptr<CloudGameServiceIteratorEx> cloudGameServiceIterator = std::make_shared<CloudGameServiceIteratorEx>();

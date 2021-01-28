@@ -364,6 +364,8 @@ void KeyBoardThread::ConnectedCallback(std::string msg , int error){
 }
 
 void KeyBoardThread::DisconnectedCallback(std::string msg , int error){
+     stop();
+     start(m_wsUrl , m_loginCommand);
      emit RecordSignal(UI_ERROR ,QString("ws socket  disconnect  %s!").arg(m_wsUrl.toStdString().c_str()));
 }
 
@@ -626,10 +628,14 @@ void KeyBoardThread::MessageCallback(std::string message , int error){
 }
 
 void KeyBoardThread::FailureCallback(std::string msg , int error){
+    stop();
+    start(m_wsUrl , m_loginCommand);
     emit RecordSignal(UI_ERROR ,QString("ws socket occure failure  %s!").arg(m_wsUrl.toStdString().c_str()));
 }
 
 void KeyBoardThread::InterruptCallback(std::string msg , int error){
+    stop();
+    start(m_wsUrl , m_loginCommand);
     emit RecordSignal(UI_ERROR ,QString("ws socket occure Interrupt  %s!").arg(m_wsUrl.toStdString().c_str()));
 }
 
@@ -641,22 +647,18 @@ void KeyBoardThread::run(){
 
 
 bool KeyBoardThread::start(QString wsUrl , QString loginCommand){
-    //////
+    //////close last start
     if(wsUrl.isEmpty() || loginCommand.isEmpty()){
         if(g_This){
             g_This->addLogToEdit(UI_ERROR , "KeyBoardThread::start  param is shouldn't be empty!");
         }
         return false;
     }
-//    if(m_threadFlag){
-//        //this->quit();
-//        this->stop();
-//    }
     m_wsUrl = wsUrl;
     m_loginCommand = loginCommand;
-
-    //m_threadFlag = true;
-    Sleep(1000);
+    if(KeyMouseIsValid()){
+        KeyMouseClose();
+    }
     if(!KeyMouseInit()){
         if(g_This){
             g_This->addLogToEdit(UI_ERROR , "KeyMouseInit failure!");
@@ -673,24 +675,11 @@ bool KeyBoardThread::start(QString wsUrl , QString loginCommand){
 }
 
 bool  KeyBoardThread::stop(){
-        if(!KeyMouseClose()){
-            //QMessageBox::information(NULL , "error!" , "KeyMouseClose failure!");
-            g_This->addLogToEdit(UI_ERROR, "KeyMouseClose failure!!");
-            //return false;
-        }
-//    if(m_threadFlag){
-//        m_threadFlag= false;
-//        if(isRunning()){
-//            wait();
-//        }
-//        CloseWebsocket();
-//        return true;
-//    }else{
-//        //QMessageBox::information(NULL , "error!" , "no KeyBoardThread is running!");
-//        g_This->addLogToEdit(UI_ERROR, "no KeyBoardThread is running!");
-//        CloseWebsocket();
-//        return false;
-//    }
+    if(!KeyMouseClose()){
+        g_This->addLogToEdit(UI_ERROR, "KeyMouseClose failure!!");
+    }else{
+        g_This->addLogToEdit(UI_ERROR, "KeyMouseClose success!!");
+    }
     if(isRunning()){
         wait();
     }
@@ -734,9 +723,11 @@ bool ExecuteBatScript(QString scriptFolder , QString scriptName){
 
 }
 
-void DllLogCallback(const char* logType, const char *  logMsg){
-    if(g_This && logType && logMsg){
-        g_This->addLogToEdit(logType , logMsg);
+void DllLogCallback(std::string logType, std::string logMsg){
+    if(g_This && !logType.empty() && !logMsg.empty()){
+        QString logtype = logType.c_str();
+        QString logmsg = logMsg.c_str();
+        g_This->addLogToEdit(logtype , logmsg);
     }
 }
 
@@ -798,13 +789,14 @@ CloudStreamer::CloudStreamer(QWidget *parent) :
     g_This = this;
     SetRunLogCallback(DllLogCallback);
     //StopGameCallback("{\"gameId\":\"1\",\"roomId\":\"io3ilhgr\",\"peerId\":\"xozk2qaw\",\"videoIp\":\"124.71.159.87\",\"videoPort\":\"4443\",\"keyboardIp\":\"124.71.159.87\",\"keyboardPort\":\"4455\"}");
-//    if(!KeyMouseInit()){
-//            addLogToEdit(UI_ERROR , "KeyMouseInit failure!");
-//    }else{
-//            addLogToEdit(UI_INFO , "KeyMouseInit success!");
-//    }
     //////////
-    m_file = fopen("c:\\cloudStreamer.txt" , "w+");
+   // m_file = fopen("c:\\cloudStreamer.txt" , "w+");
+    ui->groupBox_3->setEnabled(false);
+    ui->groupBox_9->setEnabled(false);
+    ui->groupBox_2->setEnabled(false);
+
+    ui->groupBox_7->setEnabled(false);
+    ui->groupBox->setEnabled(false);
 }
 
 
@@ -824,18 +816,12 @@ CloudStreamer::~CloudStreamer()
         disconnect(m_keyBoardThread.get() , SIGNAL(RecordSignal(QString , QString)) , this , SLOT(RecordSignalCallBack(QString , QString )));
         m_keyBoardThread.reset();
     }
-//    if(!KeyMouseClose()){
-//        addLogToEdit(UI_ERROR, "KeyMouseClose failure!!");
-//    }
-    if(m_file){
-        fclose(m_file);
-    }
-
     if(m_gameStatusTimer.get()){
         m_gameStatusTimer = std::make_shared<QTimer>();
         m_gameStatusTimer->stop();
         connect(m_gameStatusTimer.get() , SIGNAL(timeout()) , this , SLOT(on_game_status_timer()));
     }
+
     delete ui;
 }
 
@@ -943,9 +929,9 @@ void CloudStreamer::uninstall_Driver()
          str += logStr;
          str += "\n";
          ui->textEdit_2->append(str);
-         if(m_file){
-             fwrite(str.toLocal8Bit().data(), str.size(), 1 , m_file);
-         }
+//         if(m_file){
+//             fwrite(str.toLocal8Bit().data(), str.size(), 1 , m_file);
+//         }
      }
  }
 
@@ -1236,8 +1222,17 @@ void CloudStreamer::StartGameCallback(QString data){
            }
            QString gamePath = GetGamePathByID(gameId);
            if(!gamePath.isEmpty()){
-               StartGame(gamePath.toLocal8Bit().data() , startGameParams.toLocal8Bit().data());
-               addLogToEdit(UI_INFO ,QString("%1 game start success!\n").arg(gamePath));
+                 StartGame(gamePath.toLocal8Bit().data() , startGameParams.toLocal8Bit().data());
+//               QProcess p(NULL);
+//              // p.setWorkingDirectory(scriptFolder);
+//               QString command = gamePath + " " + startGameParams;
+//               p.start(command);
+//               if(p.waitForFinished()){
+//                   addLogToEdit(UI_INFO ,QString("%1 game start success!\n").arg(gamePath));
+//               }else{
+//                   addLogToEdit(UI_INFO ,QString("%1 game start failure!\n").arg(gamePath));
+//               }
+
            }
            /////////////
            QString domain = serverUrl;
@@ -1326,6 +1321,26 @@ QString CloudStreamer::GetGamePathByID(QString gameId){
     return "";
 }
 
+
+QString CloudStreamer::GetGameStopByID(QString gameId){
+    if(!gameId.isEmpty() ){
+        DealIniFile  streamConfig;
+        QString executePath = QCoreApplication::applicationDirPath();
+        ///路径是否合法
+        if(!executePath.isEmpty()){
+            if(0 == streamConfig.OpenFile(executePath + "/cloudGameConfig.ini")){
+                /////////////
+                ///////
+                QString path = streamConfig.GetValue("id" , gameId , "stopScript").toString();
+                if(!path.isEmpty()){
+                    return  path;
+                }
+            }
+        }
+    }
+    return "";
+}
+
 void CloudStreamer::StopGameCallback(QString data){
     //QMessageBox::information(NULL , "information!" , "StopGameCallback");
     ui->pushButton_3->clicked();
@@ -1364,7 +1379,7 @@ void CloudStreamer::StopGameCallback(QString data){
            if(gameId.isEmpty()){
                 addLogToEdit(UI_INFO , "gameId or  startGameParams is empty!\n");
            }
-           QString gamePath = GetGamePathByID(gameId);
+           QString gamePath = GetGameStopByID(gameId);
            if(!gamePath.isEmpty()){
                //kill process
                QFileInfo fileInfo= QFileInfo(gamePath);
@@ -1373,12 +1388,15 @@ void CloudStreamer::StopGameCallback(QString data){
                    processName = fileInfo.fileName();
                }
                if(!processName.isEmpty()){
-                   QProcess p;
-                   QString c = "taskkill /im ";
-                   c += processName;
-                   c += " /f";
-                   p.execute(c);
-                   p.close();
+                   /////wmic process where name='qq.exe'  delete
+                     QProcess p(NULL);
+                     QString command = gamePath;
+                     p.start(command);
+                     if(p.waitForFinished()){
+                         addLogToEdit(UI_INFO ,QString("%1 game stop success!\n").arg(gamePath));
+                     }else{
+                         addLogToEdit(UI_INFO ,QString("%1 game stop failure!\n").arg(gamePath));
+                   }
                }
                addLogToEdit(UI_INFO , "game stop success!\n");
            }

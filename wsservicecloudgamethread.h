@@ -35,6 +35,7 @@ private:
     QString m_loginCommand;
     //std::shared_ptr<WebSocket> m_wsSocket;
     std::shared_ptr<WsAppConnection> m_wsSocket;
+    bool m_activeDisconnect;
 };
 
 #endif // WSSERVICECLOUDGAMETHREAD_H
