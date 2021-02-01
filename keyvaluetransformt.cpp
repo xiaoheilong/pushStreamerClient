@@ -128,20 +128,21 @@ void KeyValueTransformt::ReverseBounce(float x , float y){
         direction  =m_lastDirectPoint.y > 0 ? DIRECT_DOWN:DIRECT_TOP;
         ret = GetMapKeyValueEx(direction , vector);
     }
-//    if(m_consumerKeyboard.get()){
-//        m_consumerKeyboard->FilterKeyType(ConsumerKeyboardValueSpace::KeyBoardType::HANDLE_SHAKE_DIRECT_KEY , false);
-//    }
     for(int i =0; i < vector.size(); ++i){
             int value = vector[i];
             Products  callback;
             callback.m_type = ConsumerKeyboardValueSpace::KeyBoardType::HANDLE_SHAKE_DIRECT_KEY;
             callback.m_pointer =nullptr;
             callback.m_callback = std::bind([value](){
-                KeyUp(value);
+                if(!KeyUp(value)){
+                    NSSleep(50);
+                    KeyUp(value);
+                }
                 NSSleep(1);
             });
             AddKeyValueToThread(callback);
     }
+
 }
 
  int KeyValueTransformt::ConvertXYDirection(float x , float y , int ud ){
@@ -191,8 +192,11 @@ void KeyValueTransformt::ReverseBounce(float x , float y){
                 callback.m_type = ConsumerKeyboardValueSpace::KeyBoardType::HANDLE_SHAKE_DIRECT_KEY;
                 callback.m_pointer = nullptr;
                 callback.m_callback =  std::bind([value](){
+                    if(!KeyDown(value)){
+                        KeyUp(value);
                         KeyDown(value);
-                        NSSleep(1);
+                    }
+                    NSSleep(1);
                 });
                 AddKeyValueToThread(callback);
         }
@@ -207,17 +211,22 @@ void KeyValueTransformt::ConvertMouse(float &z , float &rz){
 
 
 void KeyValueTransformt::DirectionAllUp(){
+    if(m_consumerKeyboard.get()){
+        return;
+    }
     std::vector<int> vector;
     GetMapKeyValueEx(m_lastDirect , vector);
-
     for(int i =0; i < vector.size(); ++i){
           int value = vector[i];
           Products  callback;
           callback.m_type = ConsumerKeyboardValueSpace::KeyBoardType::HANDLE_SHAKE_DIRECT_KEY;
           callback.m_pointer = nullptr;
           callback.m_callback =  std::bind([value](){
-                    KeyUp(value);
-                    NSSleep(1);
+              if(!KeyUp(value)){
+                 NSSleep(50);
+                 KeyUp(value);
+              }
+              NSSleep(1);
           });
           AddKeyValueToThread(callback);
     }
@@ -234,14 +243,14 @@ int KeyValueTransformt::KeyDown_C(int keyValue){
     for(int index = 0; index < size;++index ){
         int key = resultArray[index].toInt();
         if(key){
-//            if(!KeyDown(key)){
-//                ret = -1;
-//            }
             Products  callback;
             callback.m_type = ConsumerKeyboardValueSpace::KeyBoardType::NORMAL_KEY_ACTION;
             callback.m_pointer = nullptr;
             callback.m_callback = std::bind([key](){
-                KeyDown(key);
+                if(!KeyDown(key)){
+                   KeyUp(key);
+                   KeyDown(key);
+                }
                 NSSleep(1);
             });
             AddKeyValueToThread(callback);
@@ -268,7 +277,10 @@ int KeyValueTransformt::KeyUP_C(int keyValue){
             callback.m_type = ConsumerKeyboardValueSpace::KeyBoardType::NORMAL_KEY_ACTION;
             callback.m_pointer = nullptr;
             callback.m_callback = std::bind([key](){
-                KeyUp(key);
+                if(!KeyUp(key)){
+                    NSSleep(50);
+                    KeyUp(key);
+                }
                 NSSleep(1);
             });
             AddKeyValueToThread(callback);
@@ -281,18 +293,23 @@ int KeyValueTransformt::MouseMove_C(int x, int y, int code){
     if(!m_nameKeyTable.get() &&!m_defaultKeyBoardPath.get()){
         return -1;
     }
-    if(!MouseMove(x, y ,code)){
-        return -1;
-    }
+//    if(!MouseMove(x, y ,code)){
+//        if(!MouseMove(x, y ,code)){
+//            return -1;
+//        }
+//    }
 
-//    Products  callback;
-//    callback.m_type = ConsumerKeyboardValueSpace::KeyBoardType::MOUSE_ACTION;
-//    callback.m_pointer = nullptr;
-//    callback.m_callback = std::bind([x, y, code](){
-//        MouseMove(x, y ,code);
-//        NSSleep(1);
-//    });
-//    AddKeyValueToThread(callback);
+    Products  callback;
+    callback.m_type = ConsumerKeyboardValueSpace::KeyBoardType::MOUSE_ACTION;
+    callback.m_pointer = nullptr;
+    callback.m_callback = std::bind([x, y, code](){
+        if(!MouseMove(x, y ,code)){
+            NSSleep(50);
+            MouseMove(x, y ,code);
+        }
+        NSSleep(1);
+    });
+    AddKeyValueToThread(callback);
     return 0;
 }
 //鼠标抬起
@@ -307,10 +324,12 @@ int KeyValueTransformt::MouseUp_C(int x, int y, int code){
     callback.m_type = ConsumerKeyboardValueSpace::KeyBoardType::MOUSE_ACTION;
     callback.m_pointer =nullptr;
     callback.m_callback = std::bind([x, y, code](){
-        MouseUp(x, y , code);
+        if(!MouseUp(x, y , code)){
+            NSSleep(50);
+            MouseUp(x, y , code);
+        }
         NSSleep(1);
     });
-    AddKeyValueToThread(callback);
     return 0;
 }
 //鼠标按下
@@ -326,7 +345,10 @@ int KeyValueTransformt::MouseDown_C(int x, int y, int code){
     callback.m_type = ConsumerKeyboardValueSpace::KeyBoardType::MOUSE_ACTION;
     callback.m_pointer = nullptr;
     callback.m_callback = std::bind([x , y , code](){
-       MouseDown(x, y , code);
+        if(!MouseDown(x, y , code)){
+            NSSleep(50);
+            MouseDown(x, y , code);
+        }
        NSSleep(1);
     });
     AddKeyValueToThread(callback);

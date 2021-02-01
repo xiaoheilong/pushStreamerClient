@@ -88,6 +88,7 @@ private:
     void AddKeyValueToThread(Products callback);
 
     void ReverseBounce(float x , float y);
+
 private:
      std::shared_ptr<DealIniFile> m_nameKeyTable;
      std::shared_ptr<DealIniFile> m_defaultKeyBoardPath;

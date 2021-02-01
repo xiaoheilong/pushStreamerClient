@@ -84,6 +84,36 @@ std::wstring s2ws(const std::string &s)
     return result;
 }
 
+
+bool isProcessRunning(QString processName)
+{
+    PROCESSENTRY32 pe;
+        DWORD id = 0;
+        HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+        pe.dwSize = sizeof(PROCESSENTRY32);
+        if (!Process32First(hSnapshot, &pe))
+            //LogEx(UI_ERROR , "GetProcessidFromName Process32First is failure!");
+            return false;
+        while (1)
+        {
+            pe.dwSize = sizeof(PROCESSENTRY32);
+            if (Process32Next(hSnapshot, &pe) == FALSE) {
+                //LogEx(g_UI_ERROR, "GetProcessidFromName  result is false!");
+                break;
+            }
+            std::string path1 = processName.toStdString();
+            std::wstring path = s2ws(path1);
+            if (lstrcmp(pe.szExeFile, path.c_str()) == 0)
+            {
+                id = pe.th32ProcessID;
+                //LogEx(g_UI_ERROR, "GetProcessidFromName  result is true!");
+                break;
+            }
+        }
+        CloseHandle(hSnapshot);
+        return id > 0 ? true:false;
+}
+
 vector<string> split(const string& str, const string& delim) {
     vector<string> res;
     if ("" == str) return res;
@@ -547,12 +577,15 @@ void KeyBoardThread::MessageCallback(std::string message , int error){
                     if(keyValue.isMember("key")){
                         keyStr = keyValue["key"].asString();
                     }
+                    ///////
                     ////方向按键
                     if(!m_keyBoardConfig.get()){
                         emit RecordSignal(UI_INFO ,QString("m_keyBoardConfig is nullptr  should touch keyboard configure file !\n"));
                         return;
                     }
+
                     int xyKey = m_keyBoardConfig->ConvertXYDirection(x, y , ud);
+                    emit RecordSignal(UI_INFO ,QString("x = %1 y=%2  ud=%3").arg(x ).arg(y).arg(ud));
                     float tempZ = z;
                     float tempRz = rz;
                     m_keyBoardConfig->ConvertMouse(tempZ , tempRz);
@@ -791,12 +824,12 @@ CloudStreamer::CloudStreamer(QWidget *parent) :
     //StopGameCallback("{\"gameId\":\"1\",\"roomId\":\"io3ilhgr\",\"peerId\":\"xozk2qaw\",\"videoIp\":\"124.71.159.87\",\"videoPort\":\"4443\",\"keyboardIp\":\"124.71.159.87\",\"keyboardPort\":\"4455\"}");
     //////////
    // m_file = fopen("c:\\cloudStreamer.txt" , "w+");
-    ui->groupBox_3->setEnabled(false);
-    ui->groupBox_9->setEnabled(false);
-    ui->groupBox_2->setEnabled(false);
+//    ui->groupBox_3->setEnabled(false);
+//    ui->groupBox_9->setEnabled(false);
+//    ui->groupBox_2->setEnabled(false);
 
-    ui->groupBox_7->setEnabled(false);
-    ui->groupBox->setEnabled(false);
+//    ui->groupBox_7->setEnabled(false);
+//    ui->groupBox->setEnabled(false);
 }
 
 
@@ -826,6 +859,14 @@ CloudStreamer::~CloudStreamer()
 }
 
 void CloudStreamer::closeEvent ( QCloseEvent * event ){
+    if(m_gameId.isEmpty()){
+         addLogToEdit(UI_INFO , "gameId or  startGameParams is empty!\n");
+    }
+    QString gamePath = GetGameStopByID(m_gameId);
+    if(!gamePath.isEmpty()){
+        StartGame(gamePath.toLocal8Bit().data() , NULL);
+        addLogToEdit(UI_INFO , "game stop success!\n");
+    }
     ui->pushButton_3->clicked();
 }
 
@@ -1154,8 +1195,8 @@ void CloudStreamer::DisconnectCallback(QString url, QString data){
 }
 
 void CloudStreamer::on_game_status_timer(){
-    QString gamePath = GetGamePathByID(m_gameId);
-    QString  testStr = WSServiceTransferSignStringEx(m_deviceNo , m_sessionId , m_gameId ,gamePath);
+    QString gameName = GetValueByGameID(m_gameId , "gameExeName");
+    QString  testStr = WSServiceTransferSignStringEx(m_deviceNo , m_sessionId , m_gameId ,gameName);
     emit m_cloudGameServiceIterator->Send(testStr);
     addLogToEdit(UI_INFO , QString("send GameReportDeviceState status: %1").arg(testStr));
 }
@@ -1194,6 +1235,10 @@ void CloudStreamer::StartGameCallback(QString data){
            QString control = root["control"].asCString();
            QString fileMiniTime = root["fileMiniTime"].asCString();
            QString isQueuing = root["isQueuing"].asCString();
+           int  force = 0 ;
+           if(root.isMember("force")){
+               force = root["force"].asInt();
+           }
            ///////////////////
            /// \brief keyboardLoginParams
            if(root["keyboardLoginParams"].isObject()){
@@ -1219,10 +1264,20 @@ void CloudStreamer::StartGameCallback(QString data){
            ////////loginParam port replace to deviceNo
            if(gameId.isEmpty()  || startGameParams.isEmpty()){
                 addLogToEdit(UI_INFO , "gameId or  startGameParams is empty!\n");
+           }else{
+               if(0 == startGameParams.compare("null"));{
+                   startGameParams.clear();
+               }
            }
-           QString gamePath = GetGamePathByID(gameId);
-           if(!gamePath.isEmpty()){
-                 StartGame(gamePath.toLocal8Bit().data() , startGameParams.toLocal8Bit().data());
+           bool gameIsRunning = false;
+           gameIsRunning = GameIsAreadlyRunning(gameId);
+           if(gameIsRunning){
+               if(force > 0 ){
+                    KillAreadlyRunningGame(gameId);
+                    StartGameByGameId(gameId , startGameParams );
+               }
+           }else{
+               StartGameByGameId(gameId , startGameParams);
            }
            /////////////
            QString domain = serverUrl;
@@ -1291,17 +1346,74 @@ void CloudStreamer::StartGameCallback(QString data){
     return "";
 }
 
+ bool   CloudStreamer::StartGameByGameId(QString gameId, QString startGameParams){
+     if(!gameId.isEmpty()){
+         QString gamePath = GetGamePathByID(gameId);
+         addLogToEdit(UI_INFO , "gamePath is parepar start!\n");
+         if(!gamePath.isEmpty()){
+             bool ret = false;
+             if(!startGameParams.isEmpty()){
+                 ret = StartGame(gamePath.toLocal8Bit().data() , startGameParams.toLocal8Bit().data());
+             }else{
+                 ret = StartGame(gamePath.toLocal8Bit().data() , NULL);
+             }
+             if(ret){
+                  addLogToEdit(UI_INFO , QString("gamePath=  %1 gameId start success!\n").arg(gamePath));
+                  return true;
+             }else{
+                  addLogToEdit(UI_INFO , QString("gamePath= %1 gameId start failure!\n").arg(gamePath));
+             }
+         }else{
+             addLogToEdit(UI_INFO , "gamePath is empty!\n");
+         }
+     }
+     return false;
+ }
+
+ bool  CloudStreamer::GameIsAreadlyRunning(QString gameId){
+     if(!gameId.isEmpty()){
+         QString gameName = GetValueByGameID(m_gameId , "gameExeName");
+         if(!gameName.isEmpty()){
+              return isProcessRunning(gameName.toStdString().c_str());
+         }
+     }
+     return false;
+}
+
+
+ bool  CloudStreamer::KillAreadlyRunningGame(QString gameId){
+     if(!gameId.isEmpty()){
+         QString gameStopPath = GetGameStopByID(gameId);
+         if(!gameStopPath.isEmpty()){
+               StartGame(gameStopPath.toLocal8Bit().data() , NULL);
+         }
+         QString gameName = GetValueByGameID(m_gameId , "gameExeName");
+         if(!gameName.isEmpty()){
+             do{
+                 if(!isProcessRunning(gameName.toStdString().c_str())){
+                     break;
+                 }
+                 Sleep(100);
+             }while(1);
+             return true;
+         }
+     }
+     return false;
+ }
+
 
 QString CloudStreamer::GetGamePathByID(QString gameId){
     if(!gameId.isEmpty() ){
         DealIniFile  streamConfig;
         QString executePath = QCoreApplication::applicationDirPath();
         ///路径是否合法
+        addLogToEdit(UI_INFO ,  QString("executePath:%1  gameId=%2!").arg(executePath).arg(gameId));
         if(!executePath.isEmpty()){
             if(0 == streamConfig.OpenFile(executePath + "/cloudGameConfig.ini")){
                 /////////////
                 ///////
                 QString path = streamConfig.GetValue("id" , gameId , "path").toString();
+                addLogToEdit(UI_INFO ,  QString("gamePath :%1  gameId=%2!").arg(path).arg(gameId));
                 if(!path.isEmpty()){
                     return  path;
                 }
@@ -1332,7 +1444,9 @@ QString CloudStreamer::GetGameStopByID(QString gameId){
 }
 
 void CloudStreamer::StopGameCallback(QString data){
-    //QMessageBox::information(NULL , "information!" , "StopGameCallback");
+    QString gameName = GetValueByGameID(m_gameId , "gameExeName");
+    QString  testStr = WSServiceTransferSignStringEx(m_deviceNo , m_sessionId , m_gameId ,gameName);
+    emit m_cloudGameServiceIterator->Send(testStr);
     ui->pushButton_3->clicked();
     m_gameId.clear();
     if(!data.isEmpty()){
@@ -1371,23 +1485,7 @@ void CloudStreamer::StopGameCallback(QString data){
            }
            QString gamePath = GetGameStopByID(gameId);
            if(!gamePath.isEmpty()){
-               //kill process
-               QFileInfo fileInfo= QFileInfo(gamePath);
-               QString processName = "";
-               if(fileInfo.isExecutable()){
-                   processName = fileInfo.fileName();
-               }
-               if(!processName.isEmpty()){
-                   /////wmic process where name='qq.exe'  delete
-                     QProcess p(NULL);
-                     QString command = gamePath;
-                     p.start(command);
-                     if(p.waitForFinished()){
-                         addLogToEdit(UI_INFO ,QString("%1 game stop success!\n").arg(gamePath));
-                     }else{
-                         addLogToEdit(UI_INFO ,QString("%1 game stop failure!\n").arg(gamePath));
-                   }
-               }
+               StartGame(gamePath.toLocal8Bit().data() , NULL);
                addLogToEdit(UI_INFO , "game stop success!\n");
            }
         }
@@ -1471,36 +1569,9 @@ QString  WSServiceTransferSignString(QString &deviceNo){
 }
 
 
-bool isProcessRunning(QString processName)
-{
-    PROCESSENTRY32 pe;
-        DWORD id = 0;
-        HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-        pe.dwSize = sizeof(PROCESSENTRY32);
-        if (!Process32First(hSnapshot, &pe))
-            //LogEx(UI_ERROR , "GetProcessidFromName Process32First is failure!");
-            return false;
-        while (1)
-        {
-            pe.dwSize = sizeof(PROCESSENTRY32);
-            if (Process32Next(hSnapshot, &pe) == FALSE) {
-                //LogEx(g_UI_ERROR, "GetProcessidFromName  result is false!");
-                break;
-            }
-            std::string path1 = processName.toStdString();
-            std::wstring path = s2ws(path1);
-            if (lstrcmp(pe.szExeFile, path.c_str()) == 0)
-            {
-                id = pe.th32ProcessID;
-                //LogEx(g_UI_ERROR, "GetProcessidFromName  result is true!");
-                break;
-            }
-        }
-        CloseHandle(hSnapshot);
-        return id > 0 ? true:false;
-}
 
-QString  WSServiceTransferSignStringEx(QString &deviceNo, QString sessionId , QString gameId , QString gamePath){
+
+QString  WSServiceTransferSignStringEx(QString deviceNo, QString sessionId , QString gameId , QString gamePath){
     ///
     Json::Value root;
     Json::Value data;
@@ -1524,35 +1595,31 @@ QString  WSServiceTransferSignStringEx(QString &deviceNo, QString sessionId , QS
     root["type"] = "GameReportDeviceState";
     root["sessionId"] = sessionId.toStdString().c_str();
     ////////
-    QString deviceNoStr = "";//noncestrQt + epochTimeStr;
-    FILE * file = NULL;
-    file = fopen("c:\\testDeviceNo.txt" , "r");
-    if(file){
-        //求得文件的大小
-        fseek(file, 0, SEEK_END);
-        int size = ftell(file);
-        rewind(file);
-        //申请一块能装下整个文件的空间
-        char* ar = (char*)malloc(sizeof(char)*size);
-        //读文件
-        fread(ar,1,size,file);//每次读一个，共读size次
-        ar[size] = '\0';
-        deviceNoStr = ar;
-        fclose(file);
-    }
-    deviceNo = deviceNoStr;
-    data["deviceNo"] = deviceNoStr.toLocal8Bit().data();
+//    FILE * file = NULL;
+//    file = fopen("c:\\testDeviceNo.txt" , "r");
+//    if(file){
+//        //求得文件的大小
+//        fseek(file, 0, SEEK_END);
+//        int size = ftell(file);
+//        rewind(file);
+//        //申请一块能装下整个文件的空间
+//        char* ar = (char*)malloc(sizeof(char)*size);
+//        //读文件
+//        fread(ar,1,size,file);//每次读一个，共读size次
+//        ar[size] = '\0';
+//        deviceNoStr = ar;
+//        fclose(file);
+//    }
+    data["deviceNo"] = deviceNo.toLocal8Bit().data();
     data["gameId"] = gameId.toStdString().c_str();
     int gameIsRunning = 0 ;
     ///////////////
     if(!gamePath.isEmpty()){
-       ///get game name
-       QFileInfo fileInfo= QFileInfo(gamePath);
-       if(fileInfo.isExecutable()){
-           QString gameName = fileInfo.fileName();
-           ////////////
-           if(isProcessRunning(gameName.toStdString().c_str())){
-               gameIsRunning = 1;
+       if(isProcessRunning(gamePath.toStdString().c_str())){
+           gameIsRunning = 1;
+       }else{
+           if(g_This){
+                g_This->addLogToEdit(UI_INFO , QString("game:%1 is not running!").arg(gamePath));
            }
        }
     }
@@ -1640,8 +1707,8 @@ void CloudStreamer::ParseMessageCallback(QString data){
                         StopGameCallback(rootJsonStr.c_str());
                    }else if(msgType.compare("SignIn") == 0){//signIn
                         SignInCloudGameCallback(rootJsonStr.c_str());
-                        QString gamePath = GetGamePathByID(m_gameId);
-                        QString  testStr = WSServiceTransferSignStringEx(m_deviceNo , m_sessionId , m_gameId ,gamePath);
+                        QString gameName = GetValueByGameID(m_gameId , "gameExeName");
+                        QString  testStr = WSServiceTransferSignStringEx(m_deviceNo , m_sessionId , m_gameId ,gameName);
                         emit m_cloudGameServiceIterator->Send(testStr);
                         addLogToEdit(UI_INFO , QString("send GameReportDeviceState status: %1").arg(testStr));
                    }

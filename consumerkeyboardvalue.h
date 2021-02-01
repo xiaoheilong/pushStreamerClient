@@ -18,25 +18,31 @@ namespace ConsumerKeyboardValueSpace{
         MOUSE_ACTION
     };
 
+    enum ProductStatus{
+        Normal_ROLE = 0 , // can  eat
+        DEVIL_ROLE,       // can't eat
+        ANGEL_ROLE        // could eat more
+    };
 
     typedef std::function<void()> keyCallback;
     struct Products{
         KeyBoardType m_type;
         keyCallback m_callback;
         void *  m_pointer;
+        ProductStatus  m_role;
     };
 
     template<class T>
     class ConsumerKeyBoardValue : public QThread
     {
     public:
-        ConsumerKeyBoardValue(QObject * parent = nullptr):QThread(parent) , m_threadFlag(true), m_pauseComsumer(false){
+        ConsumerKeyBoardValue(QObject * parent = nullptr):QThread(parent) , m_threadFlag(true){
             m_mutex = std::make_shared<QMutex>();
             m_event = std::make_shared<QWaitCondition>();
-            m_filterOutKeyMap.insert(std::make_pair<KeyBoardType , bool>(NO_TYPE , false));
-            m_filterOutKeyMap.insert(std::make_pair<KeyBoardType , bool>(NORMAL_KEY_ACTION , false));
-            m_filterOutKeyMap.insert(std::make_pair<KeyBoardType , bool>(HANDLE_SHAKE_DIRECT_KEY , false));
-            m_filterOutKeyMap.insert(std::make_pair<KeyBoardType , bool>(MOUSE_ACTION , false));
+            m_filterOutKeyMap.insert(std::make_pair<KeyBoardType , bool>(NO_TYPE , true));
+            m_filterOutKeyMap.insert(std::make_pair<KeyBoardType , bool>(NORMAL_KEY_ACTION , true));
+            m_filterOutKeyMap.insert(std::make_pair<KeyBoardType , bool>(HANDLE_SHAKE_DIRECT_KEY , true));
+            m_filterOutKeyMap.insert(std::make_pair<KeyBoardType , bool>(MOUSE_ACTION , true));
         }
         ~ConsumerKeyBoardValue(){
             Stop();
@@ -73,14 +79,9 @@ namespace ConsumerKeyboardValueSpace{
                 }
                 return ret;
             }
-
         virtual void FilterKeyType(KeyBoardType keyType , bool valid){
             if(m_filterOutKeyMap.count(keyType)){
                 m_filterOutKeyMap[keyType] = valid;
-            }
-            if(!valid){
-                m_keyboardVectorShadow.swap(m_keyboardVector);
-                m_pauseComsumer = true;
             }
         }
 
@@ -93,44 +94,48 @@ namespace ConsumerKeyboardValueSpace{
 
 
         private:
+        const T & GetFirstElement(){
+            return m_keyboardVector.front();
+        }
+
+        void    EraseFirstElemt(){
+            m_keyboardVector.pop();
+        }
+
         virtual void run(){
             while(m_threadFlag){
-                if(m_keyboardVector.empty() ){
-                     m_mutex->lock();
-                     m_event->wait(m_mutex.get());
-                     m_mutex->unlock();
+                    if(m_keyboardVector.empty() ){
+                         m_mutex->lock();
+                         m_event->wait(m_mutex.get());
+                         m_mutex->unlock();
 
-                }
-                if(m_pauseComsumer){
-                    clearBadCallback();
-                }else{
+                    }
                     if(!m_keyboardVector.empty()){
-                        auto func = m_keyboardVector.front();
+                        auto func = GetFirstElement();
                         func.m_callback();
-                        m_keyboardVector.pop();
+//                        if(m_filterOutKeyMap[func.m_type]){//this type should been consumer
+//                            if(ProductStatus::DEVIL_ROLE == func.m_role){
+//                                FilterKeyType(func.m_type , false);
+//                            }else{
+//                                if(func.m_callback){
+//                                    func.m_callback();
+//                                }
+//                            }
+//                        }else{//unvalid type
+//                            if(ProductStatus::ANGEL_ROLE == func.m_role){
+//                               FilterKeyType(func.m_type , true);
+//                               if(func.m_callback){
+//                                    func.m_callback();
+//                               }
+//                            }
+//                        }
+                        EraseFirstElemt();
                     }
                 }
             }
-        }
-
-
-        void clearBadCallback(){
-            while(m_keyboardVectorShadow.size()){
-                auto func = m_keyboardVectorShadow.front();
-                if(IsFilterOutKeyType(func.m_type)){
-                    func.m_callback();
-                }
-                m_keyboardVectorShadow.pop();
-            }
-            m_filterOutKeyMap[NO_TYPE ] = true;
-            m_filterOutKeyMap[NORMAL_KEY_ACTION] = true;
-            m_filterOutKeyMap[HANDLE_SHAKE_DIRECT_KEY] =  true;
-            m_filterOutKeyMap[MOUSE_ACTION] =  true;
-            m_pauseComsumer = false;
-        }
 
         void PushTValue(T value){
-                m_keyboardVector.push(value);
+            m_keyboardVector.push(value);
         }
 
         private:
@@ -140,8 +145,6 @@ namespace ConsumerKeyboardValueSpace{
             std::queue<T> m_keyboardVector;
             std::queue<T> m_keyboardVectorShadow;
             std::map<KeyBoardType , bool> m_filterOutKeyMap;
-
-            bool m_pauseComsumer;
     };
 }
 

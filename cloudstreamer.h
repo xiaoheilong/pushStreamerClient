@@ -66,7 +66,7 @@ enum UI_MODE{
     ONLY_KEY_BOARD
 };
 
-QString  WSServiceTransferSignStringEx(QString &deviceNo, QString sessionId , QString gameId , QString gamePath);
+QString  WSServiceTransferSignStringEx(QString deviceNo, QString sessionId , QString gameId , QString gamePath);
 
 class CloudStreamer : public QMainWindow ,  public std::enable_shared_from_this<CloudStreamer>
 {
@@ -133,6 +133,9 @@ protected:
     QString GetGamePathByID(QString gameId);
     QString GetGameStopByID(QString gameId);
     QString GetValueByGameID(QString gameId , QString keyName);
+    bool    GameIsAreadlyRunning(QString gameId);
+    bool    KillAreadlyRunningGame(QString gameId);//同步
+    bool    StartGameByGameId(QString gameId ,QString startGameParams);
 private:
     Ui::CloudStreamer *ui;
     /////////
