@@ -45,6 +45,7 @@ extern CloudStreamer * g_This = NULL;
 static QString g_gStreamerLogPath = "d://gStreamer.txt";
 static const QString g_signKey = "CGW1uQ1StIRE0MBVrQg7wcYQjgC2wRlLmAQ1ZofF8S2XKWMv0ZS587lnXZeW9bA1QFo9veTBswC2nAnrMoBUec30mxuWCF0A2h3dOwDcRLjfVrTri73ynYn3gSLBedDSn0S";
 static const QString g_wsServerKey = "ND857fxx*3";
+const int g_reportGameStatusInteral = 30000;  //per ms
 //推流和键盘默认配置文件在 streamConfig.ini文件中
 //////云游戏默认配置文件在   cloudGameConfig.ini文件中
 /// ////////////////
@@ -769,7 +770,8 @@ CloudStreamer::CloudStreamer(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::CloudStreamer), m_isInstallDriver(false) , m_isPushStream(false) , m_isOpenKeyBoard(false),m_isWin32Init(false),
     m_keyBoardthreadFlag(false), m_keyBoardThread(nullptr),m_gamePath(""),m_fileSavePath(""),m_mode(DEFAULT_MODE),
-    m_sessionId(""), m_deviceNo(""), m_controlUrl("") , m_file(NULL), m_gameStatusTimer(NULL)
+    m_sessionId(""), m_deviceNo(""), m_controlUrl("") , m_file(NULL), m_gameStatusTimer(NULL),m_startGameThread(NULL),
+    m_stopGameThread(NULL),m_signInThread(NULL)
 {
     ui->setupUi(this);
     ///////////init winsocket 32
@@ -830,6 +832,9 @@ CloudStreamer::CloudStreamer(QWidget *parent) :
 
 //    ui->groupBox_7->setEnabled(false);
 //    ui->groupBox->setEnabled(false);
+    //////////connect some signal to slot
+    connect(this , SIGNAL(ChangeCloudStreamerStatue(QString)) , this , SLOT(on_changeCloudStreamerStatue(QString)));
+    connect(this , SIGNAL(InputLog(QString, QString)) , this , SLOT(on_inputLog(QString, QString)));
 }
 
 
@@ -849,13 +854,25 @@ CloudStreamer::~CloudStreamer()
         disconnect(m_keyBoardThread.get() , SIGNAL(RecordSignal(QString , QString)) , this , SLOT(RecordSignalCallBack(QString , QString )));
         m_keyBoardThread.reset();
     }
-    if(m_gameStatusTimer.get()){
-        m_gameStatusTimer = std::make_shared<QTimer>();
-        m_gameStatusTimer->stop();
-        connect(m_gameStatusTimer.get() , SIGNAL(timeout()) , this , SLOT(on_game_status_timer()));
-    }
+    StopReportStatusTimer();
+    ///////////disconnect signal-slot
+    disconnect(this , SIGNAL(ChangeCloudStreamerStatue(QString)) , this , SLOT(on_changeCloudStreamerStatue(QString)));
 
+    StopWorkThread(m_startGameThread);
+    StopWorkThread(m_stopGameThread);
+    StopWorkThread(m_signInThread);
+    disconnect(this , SIGNAL(InputLog(QString, QString)) , this , SLOT(on_inputLog(QString, QString)));
     delete ui;
+}
+
+void    CloudStreamer::StopWorkThread(std::shared_ptr<std::thread> thread){
+    if(thread.get()){
+        if(thread->joinable()){
+            thread->join();
+        }
+        thread.reset();
+        thread = NULL;
+    }
 }
 
 void CloudStreamer::closeEvent ( QCloseEvent * event ){
@@ -961,6 +978,11 @@ void CloudStreamer::uninstall_Driver()
 
 
  void  CloudStreamer::addLogToEdit(QString flagStr,QString logStr){
+     emit InputLog(flagStr , logStr);
+ }
+
+
+ void CloudStreamer::on_inputLog(QString flagStr,QString logStr){
      if(!logStr.isEmpty()){
          SYSTEMTIME sys;
          GetLocalTime( &sys );
@@ -1293,8 +1315,8 @@ void CloudStreamer::StartGameCallback(QString data){
                 return;
            }
            addLogToEdit(UI_INFO , QString("push stream  params serverUrl=%1  domain:%2  roomId=%3").arg(serverUrl).arg(domain).arg(roomId));
-           ui->lineEdit_3->setText(roomId);
-           ui->lineEdit->setText(serverUrl);
+           //ui->lineEdit_3->setText(roomId);
+           //ui->lineEdit->setText(serverUrl);
            ret = push(roomId.toLocal8Bit().data(),serverUrl.toLocal8Bit().data(), domain.toLocal8Bit().data(),framerate.toInt() ,
                       bitrate.toInt(),deadline.toInt() , cpuused.toInt(),x.toInt(),
                y.toInt(), mode.toInt(), capmode.toInt(), vol.toInt());
@@ -1321,13 +1343,27 @@ void CloudStreamer::StartGameCallback(QString data){
 //           controlUrl += "/";
            m_controlUrl = controlUrl;
            QString wsUrl  = AssembleWSServer(controlUrl , g_wsServerKey , m_deviceNo);
-           ui->textEdit->setText(keyboardLoginParams);
+           //ui->textEdit->setText(keyboardLoginParams);
            m_keyBoardThread->start(/*controlUrl*/wsUrl ,keyboardLoginParams);
-           ui->label_16->setText("start!");
+           emit this->ChangeCloudStreamerStatue("start!");
            addLogToEdit(UI_INFO , "keyBoard connection finish!\n");
         }
     }
 }
+
+
+void CloudStreamer::on_changeCloudStreamerStatue(QString statusContent){
+    ui->label_16->setText(statusContent);
+}
+
+
+//void CloudStreamer::on_activeReportGameStatus(){
+//    QString gameName = GetValueByGameID(m_gameId , "gameExeName");
+//    QString  testStr = WSServiceTransferSignStringEx(m_deviceNo , m_sessionId , m_gameId ,gameName);
+//    emit m_cloudGameServiceIterator->Send(testStr);
+//    addLogToEdit(UI_INFO , QString("send GameReportDeviceState status: %1").arg(testStr));
+//}
+
 
  QString CloudStreamer::GetValueByGameID(QString gameId , QString keyName){
     if(!gameId.isEmpty() && !keyName.isEmpty()){
@@ -1447,7 +1483,7 @@ void CloudStreamer::StopGameCallback(QString data){
     QString gameName = GetValueByGameID(m_gameId , "gameExeName");
     QString  testStr = WSServiceTransferSignStringEx(m_deviceNo , m_sessionId , m_gameId ,gameName);
     emit m_cloudGameServiceIterator->Send(testStr);
-    ui->pushButton_3->clicked();
+    emit ui->pushButton_3->clicked();
     m_gameId.clear();
     if(!data.isEmpty()){
         Json::Reader reader;
@@ -1646,6 +1682,14 @@ void CloudStreamer::SignInWsService(){
     }
 }
 
+
+void CloudStreamer::ActiveReportGameStatus(){
+    QString gameName = GetValueByGameID(m_gameId , "gameExeName");
+    QString  testStr = WSServiceTransferSignStringEx(m_deviceNo , m_sessionId , m_gameId ,gameName);
+    emit m_cloudGameServiceIterator->Send(testStr);
+    addLogToEdit(UI_INFO , QString("send GameReportDeviceState status: %1").arg(testStr));
+}
+
 void CloudStreamer::SignInCloudGameCallback(QString paramData){
     if(paramData.isEmpty()){
         return;
@@ -1668,13 +1712,24 @@ void CloudStreamer::SignInCloudGameCallback(QString paramData){
         addLogToEdit(UI_ERROR , "SignInCloudGameCallback parse json  failure !");
     }
     //////
-    ///start gamestatus start timer
-    if(!m_gameStatusTimer.get()){
-        m_gameStatusTimer = std::make_shared<QTimer>();
-        m_gameStatusTimer->start(30000);
-        connect(m_gameStatusTimer.get() , SIGNAL(timeout()) , this , SLOT(on_game_status_timer()));
-    }
+}
+
+void    CloudStreamer::StartReportStatusTimer(){
+    m_gameStatusTimer = std::make_shared<QTimer>();
+    m_gameStatusTimer->start(g_reportGameStatusInteral);
+    connect(m_gameStatusTimer.get() , SIGNAL(timeout()) , this , SLOT(on_game_status_timer()));
     ///////////
+    ActiveReportGameStatus();
+}
+
+void    CloudStreamer::StopReportStatusTimer(){
+    if(m_gameStatusTimer.get()){
+        if( m_gameStatusTimer->isActive()){
+            m_gameStatusTimer->stop();
+        }
+        disconnect(m_gameStatusTimer.get() , SIGNAL(timeout()) , this , SLOT(on_game_status_timer()));
+        m_gameStatusTimer.reset();
+    }
 }
 
 void CloudStreamer::RecordSignalCallBack(QString flagStr , QString logStr){
@@ -1702,15 +1757,27 @@ void CloudStreamer::ParseMessageCallback(QString data){
                     Json::FastWriter styled_write;
                     std::string rootJsonStr = styled_write.write(root["data"]);
                    if(msgType.compare("StartGame") == 0){//start game
-                        StartGameCallback(rootJsonStr.c_str());
+                        StopWorkThread(m_startGameThread);
+                        m_startGameThread = std::make_shared<std::thread>(&CloudStreamer::StartGameCallback, this , rootJsonStr.c_str());
+                        if(m_startGameThread.get()){
+                            m_startGameThread->detach();
+                        }
+                        //StartGameCallback(rootJsonStr.c_str());
                     }else if(msgType.compare("StopGame") == 0){//stop game
-                        StopGameCallback(rootJsonStr.c_str());
+                        //StopGameCallback(rootJsonStr.c_str());
+                       StopWorkThread(m_stopGameThread);
+                       m_stopGameThread = std::make_shared<std::thread>(&CloudStreamer::StopGameCallback, this , rootJsonStr.c_str());
+                       if(m_stopGameThread.get()){
+                           m_stopGameThread->detach();
+                       }
                    }else if(msgType.compare("SignIn") == 0){//signIn
-                        SignInCloudGameCallback(rootJsonStr.c_str());
-                        QString gameName = GetValueByGameID(m_gameId , "gameExeName");
-                        QString  testStr = WSServiceTransferSignStringEx(m_deviceNo , m_sessionId , m_gameId ,gameName);
-                        emit m_cloudGameServiceIterator->Send(testStr);
-                        addLogToEdit(UI_INFO , QString("send GameReportDeviceState status: %1").arg(testStr));
+                       StopWorkThread(m_signInThread);
+                       m_signInThread = std::make_shared<std::thread>(&CloudStreamer::SignInCloudGameCallback , this , rootJsonStr.c_str());
+                       if(m_signInThread.get()){
+                           m_signInThread->detach();
+                       }
+                       StopReportStatusTimer();
+                       StartReportStatusTimer();
                    }
                 }
             }

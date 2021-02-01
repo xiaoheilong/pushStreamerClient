@@ -81,6 +81,9 @@ public:
 //      void PushStreamSignal(QString streamParams);  //streamParams is format like json string
 //      void CloseStreamSignal(QString streamParams);//streamParams is format like json string
     friend class KeyBoardThread;
+signals:
+    void ChangeCloudStreamerStatue(QString statusContent);
+    void InputLog(QString flagStr,QString logStr);
 protected:
     typedef CloudGameServiceIteratorSpace::CloudGameServiceIterator  CloudGameServiceIterator;
 public:
@@ -112,6 +115,8 @@ private slots:
 
     void on_game_status_timer();
 
+    void on_changeCloudStreamerStatue(QString statusContent);
+    void on_inputLog(QString flagStr,QString logStr);
 private:
     void  install_Driver();
     void  uninstall_Driver();
@@ -127,6 +132,7 @@ private:
     void SignInCloudGameCallback(QString paramData);
     void SetUIModel(UI_MODE model);
     void SignInWsService();
+    void ActiveReportGameStatus();
 public:
     void  addLogToEdit(QString flagStr , QString logStr);//添加一条日志到日志
 protected:
@@ -136,6 +142,9 @@ protected:
     bool    GameIsAreadlyRunning(QString gameId);
     bool    KillAreadlyRunningGame(QString gameId);//同步
     bool    StartGameByGameId(QString gameId ,QString startGameParams);
+    void    StopWorkThread(std::shared_ptr<std::thread> thread);
+    void    StartReportStatusTimer();
+    void    StopReportStatusTimer();
 private:
     Ui::CloudStreamer *ui;
     /////////
@@ -157,5 +166,8 @@ private:
     FILE * m_file;
     QString m_gameId;
     std::shared_ptr<QTimer> m_gameStatusTimer;
+    std::shared_ptr<std::thread> m_startGameThread;
+    std::shared_ptr<std::thread> m_stopGameThread;
+    std::shared_ptr<std::thread> m_signInThread;
 };
 #endif // CLOUDSTREAMER_H
