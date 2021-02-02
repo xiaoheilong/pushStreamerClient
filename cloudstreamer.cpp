@@ -403,6 +403,7 @@ void KeyBoardThread::DisconnectedCallback(std::string msg , int error){
 void KeyBoardThread::MessageCallback(std::string message , int error){
     if (message != "")
     {
+        emit RecordSignal(UI_INFO , QString("keyboard/mouse msg:%1!").arg(message.c_str()));
         Json::Reader reader;
         Json::Value root;
         if (reader.parse(message, root))
@@ -585,11 +586,8 @@ void KeyBoardThread::MessageCallback(std::string message , int error){
                         return;
                     }
 
-                    int xyKey = m_keyBoardConfig->ConvertXYDirection(x, y , ud);
+                    //int xyKey = m_keyBoardConfig->ConvertXYDirection(x, y , ud);
                     emit RecordSignal(UI_INFO ,QString("x = %1 y=%2  ud=%3").arg(x ).arg(y).arg(ud));
-                    float tempZ = z;
-                    float tempRz = rz;
-                    m_keyBoardConfig->ConvertMouse(tempZ , tempRz);
                     ///鼠标
                     ///按键
                     switch(ud){
@@ -600,8 +598,7 @@ void KeyBoardThread::MessageCallback(std::string message , int error){
                                     int keyTemp = 0;
                                     if(isInt){
                                         keyTemp = keyValue["key"].asInt();
-                                    }
-                                    if(isString){
+                                    }else if(isString){
                                         std::string key = keyValue["key"].asString();
                                         keyTemp = atoi(key.c_str());
                                     }
@@ -609,7 +606,6 @@ void KeyBoardThread::MessageCallback(std::string message , int error){
                                         emit RecordSignal(UI_INFO ,QString("keydown normal keyTemp=%1").arg(keyTemp));
                                         m_keyBoardConfig->KeyDown_C(keyTemp);
                                     }
-                                    //}
                             }
                         }
                         break;
@@ -620,8 +616,7 @@ void KeyBoardThread::MessageCallback(std::string message , int error){
                                     int keyTemp = 0;
                                     if(isInt){
                                         keyTemp = keyValue["key"].asInt();
-                                    }
-                                    if(isString){
+                                    }else if(isString){
                                         std::string key = keyValue["key"].asString();
                                         keyTemp = atoi(key.c_str());
                                     }
@@ -629,15 +624,17 @@ void KeyBoardThread::MessageCallback(std::string message , int error){
                                         emit RecordSignal(UI_INFO ,QString("keyup keyTemp=%1").arg(keyTemp));
                                         m_keyBoardConfig->KeyUP_C(keyTemp);
                                     }
-                                //}
                                 }
-                                else if( 0 ==x  && 0 == y){
-                                        m_keyBoardConfig->DirectionAllUp();
-                                }
+//                                else if( 0 ==x  && 0 == y){
+//                                        m_keyBoardConfig->DirectionAllUp();
+//                                }
 
                         }
                         break;
                         case 4:{
+                            float tempZ = z;
+                            float tempRz = rz;
+                            m_keyBoardConfig->ConvertMouse(tempZ , tempRz);
                             emit RecordSignal(UI_INFO ,QString("mouse move z=%1 rz=%2 !").arg(z).arg(rz));
                             m_keyBoardConfig->MouseMove_C(tempZ, tempRz, 0);//摇杆没有鼠标左中右按键
                         }
@@ -1289,6 +1286,7 @@ void CloudStreamer::StartGameCallback(QString data){
            }else{
                if(0 == startGameParams.compare("null"));{
                    startGameParams.clear();
+                   ActiveReportGameStatus();
                }
            }
            bool gameIsRunning = false;
@@ -1522,6 +1520,7 @@ void CloudStreamer::StopGameCallback(QString data){
            QString gamePath = GetGameStopByID(gameId);
            if(!gamePath.isEmpty()){
                StartGame(gamePath.toLocal8Bit().data() , NULL);
+               ActiveReportGameStatus();
                addLogToEdit(UI_INFO , "game stop success!\n");
            }
         }
