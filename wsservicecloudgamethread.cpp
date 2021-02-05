@@ -9,7 +9,6 @@
 #include <stdio.h>
 #include <string>
 #include <memory>
-//#include "easywsclient.hpp"
 #include <iostream>
 //#include "CloudGame.h"
 //#include "windows.h"
@@ -59,6 +58,7 @@ void WsServiceCloudGameThread::run(){
     m_wsSocket->init(m_wsUrl.toStdString());
     m_wsSocket->connect();
     m_wsSocket->SetCallback(this);
+    this->exec();
 }
 
 int WsServiceCloudGameThread::ConnectWS(QString  wsServerUrl , QString loginParams){
@@ -71,7 +71,8 @@ int WsServiceCloudGameThread::ConnectWS(QString  wsServerUrl , QString loginPara
 int WsServiceCloudGameThread::DisconnectWS(){
     m_activeDisconnect = true;
     if(isRunning()){
-        wait();
+        this->quit();
+        this->wait();
     }
     if(m_wsSocket->isConnected()){
         m_wsSocket->terminate();

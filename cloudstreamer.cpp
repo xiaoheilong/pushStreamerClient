@@ -9,7 +9,6 @@
 #include <stdio.h>
 #include <string>
 #include <memory>
-#include "easywsclient.hpp"
 #include <iostream>
 #include "CloudGame.h"
 
@@ -28,7 +27,6 @@
 #include <QCryptographicHash>
 #include <tlhelp32.h>
 using namespace std;
-using easywsclient::WebSocket;
 //typedef KeyValueTransformtNamespace::KeyValueTransformt  KeyValueTransformt;
 //typedef KeyValueTransformtNamespace::DirectionKey   DirectionKey;
 //////////////////
@@ -43,9 +41,9 @@ const QString UI_INFO= "[UI_INFO]";
 const QString UI_WARN= "[UI_WARN]";
 extern CloudStreamer * g_This = NULL;
 static QString g_gStreamerLogPath = "d://gStreamer.txt";
-static const QString g_signKey = "CGW1uQ1StIRE0MBVrQg7wcYQjgC2wRlLmAQ1ZofF8S2XKWMv0ZS587lnXZeW9bA1QFo9veTBswC2nAnrMoBUec30mxuWCF0A2h3dOwDcRLjfVrTri73ynYn3gSLBedDSn0S";
-static const QString g_wsServerKey = "ND857fxx*3";
-const int g_reportGameStatusInteral = 30000;  //per ms
+static QString g_signKey = "CGW1uQ1StIRE0MBVrQg7wcYQjgC2wRlLmAQ1ZofF8S2XKWMv0ZS587lnXZeW9bA1QFo9veTBswC2nAnrMoBUec30mxuWCF0A2h3dOwDcRLjfVrTri73ynYn3gSLBedDSn0S";
+static QString g_wsServerKey = "ND857fxx*3";
+static int g_reportGameStatusInteral = 8000;  //per ms
 //推流和键盘默认配置文件在 streamConfig.ini文件中
 //////云游戏默认配置文件在   cloudGameConfig.ini文件中
 /// ////////////////
@@ -354,7 +352,7 @@ QString AssembleWSServer(QString wsUrl ,  QString key , QString deviceNo){
 
 ////////////
 KeyBoardThread::KeyBoardThread(QObject * parent ):QThread(parent) , m_threadFlag(false), m_wsUrl("") , m_loginCommand(""),
-    m_wsBoostSocket(NULL)// , m_keyBoardConfig(nullptr)
+    m_wsBoostSocket(NULL), m_keyPingTimer(NULL), m_keyPingThread(NULL)// , m_keyBoardConfig(nullptr)
 {
 
 }
@@ -364,8 +362,74 @@ KeyBoardThread::~KeyBoardThread(){
         m_keyBoardConfig.reset();
     }
    CloseWebsocket();
+   StopKeyPingTImer();
 }
 
+void KeyBoardThread::StartKeyPingTimer(){
+    if(g_This){
+        g_This->addLogToEdit(UI_INFO ,"StartKeyPingTimer start!");
+    }
+    if(!m_keyPingTimer){
+        m_keyPingTimer =new QTimer(0);
+        m_keyPingTimer->setInterval(800);
+        m_keyPingThread = new QThread();
+        m_keyPingThread->start();
+        m_keyPingTimer->moveToThread(m_keyPingThread);
+        connect(m_keyPingTimer, SIGNAL(timeout()) , this , SLOT(OnKeyPingTimer()),Qt::DirectConnection);
+        connect(m_keyPingThread , SIGNAL(started()) , m_keyPingTimer, SLOT(start()));
+        connect(m_keyPingThread , SIGNAL(finished()) , m_keyPingTimer, SLOT(deleteLater()));
+
+        if(g_This){
+            g_This->addLogToEdit(UI_INFO ,"StartKeyPingTimer finish init!");
+        }
+    }else{
+        if(g_This){
+            g_This->addLogToEdit(UI_INFO ,"StartKeyPingTimer m_keyPingTimer is not nullptr!");
+        }
+    }
+}
+
+
+void KeyBoardThread::StopKeyPingTImer(){
+    if(g_This){
+        g_This->addLogToEdit(UI_INFO ,"StopKeyPingTImer start!");
+    }
+    if(m_keyPingThread){
+         disconnect(m_keyPingTimer , SIGNAL(timeout()) , this , SLOT(OnKeyPingTimer()));
+         if(!m_keyPingThread->isFinished()){
+             if(m_keyPingThread->isRunning()){
+                m_keyPingThread->quit();
+                m_keyPingThread->wait();
+             }
+         }
+         delete m_keyPingThread;
+         m_keyPingThread = NULL;
+         if(g_This){
+            g_This->addLogToEdit(UI_INFO ,"StopKeyPingTImer finish uninit!");
+         }
+    }
+
+//    if(m_keyPingTimer && m_keyPingTimer->isActive()){
+//        m_keyPingTimer->stop();
+//        m_keyPingTimer->deleteLater();
+//    }
+}
+
+
+void KeyBoardThread::OnKeyPingTimer(){
+    if(g_This){
+        g_This->addLogToEdit(UI_INFO ,"start keyPing!");
+    }
+    if(!KeyPing()){
+        if(g_This){
+            g_This->addLogToEdit(UI_INFO ,"OnKeyPingTimer failure!");
+        }
+    }else{
+        if(g_This){
+            g_This->addLogToEdit(UI_INFO ,"OnKeyPingTimer success!");
+        }
+    }
+}
 
 void KeyBoardThread::StartWebSocket(){
     m_wsBoostSocket = std::make_shared<wsBoostConnect>();
@@ -406,6 +470,7 @@ void KeyBoardThread::MessageCallback(std::string message , int error){
         emit RecordSignal(UI_INFO , QString("keyboard/mouse msg:%1!").arg(message.c_str()));
         Json::Reader reader;
         Json::Value root;
+        root["haitianyise"]="just for test";
         if (reader.parse(message, root))
         {
             std::string type = "";
@@ -673,6 +738,7 @@ void KeyBoardThread::InterruptCallback(std::string msg , int error){
 void KeyBoardThread::run(){
     CloseWebsocket();
     StartWebSocket();
+    this->exec();
 }
 
 
@@ -700,19 +766,22 @@ bool KeyBoardThread::start(QString wsUrl , QString loginCommand){
             g_This->addLogToEdit(UI_INFO , "KeyMouseInit success!");
         }
     }
-
+    StopKeyPingTImer();
+    StartKeyPingTimer();
     QThread::start();
     return true;
 }
 
 bool  KeyBoardThread::stop(){
+    StopKeyPingTImer();
     if(!KeyMouseClose()){
         g_This->addLogToEdit(UI_ERROR, "KeyMouseClose failure!!");
     }else{
         g_This->addLogToEdit(UI_ERROR, "KeyMouseClose success!!");
     }
     if(isRunning()){
-        wait();
+        this->quit();
+        this->wait();
     }
     CloseWebsocket();
     g_This->addLogToEdit(UI_ERROR, " KeyBoardThread quit!");
@@ -768,7 +837,7 @@ CloudStreamer::CloudStreamer(QWidget *parent) :
     ui(new Ui::CloudStreamer), m_isInstallDriver(false) , m_isPushStream(false) , m_isOpenKeyBoard(false),m_isWin32Init(false),
     m_keyBoardthreadFlag(false), m_keyBoardThread(nullptr),m_gamePath(""),m_fileSavePath(""),m_mode(DEFAULT_MODE),
     m_sessionId(""), m_deviceNo(""), m_controlUrl("") , m_file(NULL), m_gameStatusTimer(NULL),m_startGameThread(NULL),
-    m_stopGameThread(NULL),m_signInThread(NULL)
+    m_stopGameThread(NULL),m_signInThread(NULL),m_gameStatusThread(NULL)
 {
     ui->setupUi(this);
     ///////////init winsocket 32
@@ -789,6 +858,12 @@ CloudStreamer::CloudStreamer(QWidget *parent) :
         addLogToEdit(UI_ERROR , "executePath should be empty!");
     }
     if(0 == streamConfig.OpenFile(executePath + "//streamConfig.ini")){
+        g_gStreamerLogPath = streamConfig.GetValue("streamConfig" , "g_gStreamerLogPath").toString();
+        g_signKey = streamConfig.GetValue("streamConfig" , "g_signKey").toString();
+        g_wsServerKey = streamConfig.GetValue("streamConfig" , "g_wsServerKey").toString();
+        g_reportGameStatusInteral= streamConfig.GetValue("streamConfig" , "g_reportGameStatusInteral").toInt();
+        //g_reportGameStatusInteral = 30000;//streamConfig.GetValue("streamConfig" , "g_reportGameStatusInteral").toInt();
+        addLogToEdit(UI_INFO , QString("g_gStreamerLogPath =%1 g_signKey=%2 g_wsServerKey=%3  reportGameTime=%4 ").arg(g_gStreamerLogPath).arg(g_signKey).arg(g_wsServerKey).arg(g_reportGameStatusInteral));
     }
     QString streamServerUrl = "https://";
     streamServerUrl += streamConfig.GetValue("streamConfig" , "videoIp").toString();
@@ -1226,6 +1301,7 @@ void CloudStreamer::StartGameCallback(QString data){
     if(!data.isEmpty()){
         Json::Reader reader;
         Json::Value root;
+        root["haitianyise"]="just for test";
         if (reader.parse(data.toStdString(), root)){
            QString gameId = root["gameId"].asCString();
            m_gameId = gameId;
@@ -1355,13 +1431,6 @@ void CloudStreamer::on_changeCloudStreamerStatue(QString statusContent){
 }
 
 
-//void CloudStreamer::on_activeReportGameStatus(){
-//    QString gameName = GetValueByGameID(m_gameId , "gameExeName");
-//    QString  testStr = WSServiceTransferSignStringEx(m_deviceNo , m_sessionId , m_gameId ,gameName);
-//    emit m_cloudGameServiceIterator->Send(testStr);
-//    addLogToEdit(UI_INFO , QString("send GameReportDeviceState status: %1").arg(testStr));
-//}
-
 
  QString CloudStreamer::GetValueByGameID(QString gameId , QString keyName){
     if(!gameId.isEmpty() && !keyName.isEmpty()){
@@ -1482,10 +1551,11 @@ void CloudStreamer::StopGameCallback(QString data){
     QString  testStr = WSServiceTransferSignStringEx(m_deviceNo , m_sessionId , m_gameId ,gameName);
     emit m_cloudGameServiceIterator->Send(testStr);
     emit ui->pushButton_3->clicked();
-    m_gameId.clear();
+    //m_gameId.clear();
     if(!data.isEmpty()){
         Json::Reader reader;
         Json::Value root;
+        root["haitianyise"]="just for test";
         if (reader.parse(data.toStdString(), root)){
            QString gameId = root["gameId"].asCString();
            QString roomId = root["roomId"].asCString();
@@ -1560,7 +1630,9 @@ int generateRandomNumber(){
 QString  WSServiceTransferSignString(QString &deviceNo){
     ///
     Json::Value root;
+    root["haitianyise"]="just for test";
     Json::Value data;
+    data["haitianyise"]="just for test";
     ////////
     int ret = -1;
     QString noncestrQt = QString("%1").arg(generateRandomNumber());
@@ -1609,7 +1681,9 @@ QString  WSServiceTransferSignString(QString &deviceNo){
 QString  WSServiceTransferSignStringEx(QString deviceNo, QString sessionId , QString gameId , QString gamePath){
     ///
     Json::Value root;
+    root["haitianyise"]="just for test";
     Json::Value data;
+    data["haitianyise"]="just for test";
     ////////
     int ret = -1;
     QTime time;
@@ -1695,6 +1769,7 @@ void CloudStreamer::SignInCloudGameCallback(QString paramData){
     }
     Json::Reader reader;
     Json::Value root;
+    root["haitianyise"]="just for test";
     if (reader.parse(paramData.toStdString(), root)){
         ////////////
         if(root.isMember("sessionId")){
@@ -1714,21 +1789,40 @@ void CloudStreamer::SignInCloudGameCallback(QString paramData){
 }
 
 void    CloudStreamer::StartReportStatusTimer(){
-    m_gameStatusTimer = std::make_shared<QTimer>();
-    m_gameStatusTimer->start(g_reportGameStatusInteral);
-    connect(m_gameStatusTimer.get() , SIGNAL(timeout()) , this , SLOT(on_game_status_timer()));
+    addLogToEdit(UI_INFO , QString("g_reportGameStatusInteral =!").arg(g_reportGameStatusInteral));
+    m_gameStatusTimer = new QTimer(0);
+    m_gameStatusTimer->setInterval(g_reportGameStatusInteral);
+
+    m_gameStatusThread = new QThread();
+    m_gameStatusTimer->moveToThread(m_gameStatusThread);
+
+    connect(m_gameStatusThread , SIGNAL(finished()) , m_gameStatusTimer, SLOT(deleteLater()));
+    connect(m_gameStatusThread  , SIGNAL(started()) , m_gameStatusTimer, SLOT(start()));
+    connect(m_gameStatusTimer , SIGNAL(timeout()) , this , SLOT(on_game_status_timer()));
+    m_gameStatusThread->start();
     ///////////
     ActiveReportGameStatus();
 }
 
 void    CloudStreamer::StopReportStatusTimer(){
-    if(m_gameStatusTimer.get()){
-        if( m_gameStatusTimer->isActive()){
-            m_gameStatusTimer->stop();
-        }
-        disconnect(m_gameStatusTimer.get() , SIGNAL(timeout()) , this , SLOT(on_game_status_timer()));
-        m_gameStatusTimer.reset();
+    if(m_gameStatusTimer){
+        disconnect(m_gameStatusTimer , SIGNAL(timeout()) , this , SLOT(on_game_status_timer()));
     }
+    if(m_gameStatusThread){
+        if(!m_gameStatusThread->isFinished()){
+            if(m_gameStatusThread->isRunning()){
+                m_gameStatusThread->quit();
+                m_gameStatusThread->wait();
+            }
+        }
+        delete m_gameStatusThread;
+        m_gameStatusThread= NULL;
+    }
+
+//    if(m_gameStatusTimer && m_gameStatusTimer->isActive()){
+//        m_gameStatusTimer->stop();
+//        m_gameStatusTimer->deleteLater();
+//    }
 }
 
 void CloudStreamer::RecordSignalCallBack(QString flagStr , QString logStr){
@@ -1738,6 +1832,7 @@ void CloudStreamer::RecordSignalCallBack(QString flagStr , QString logStr){
 void CloudStreamer::ParseMessageCallback(QString data){
     Json::Reader reader;
     Json::Value root;
+    root["haitianyise"]="just for test";
     addLogToEdit("Parsemsg:" , data);
     if (reader.parse(data.toStdString(), root)){
         bool exsit = root.isMember("type");
@@ -1775,6 +1870,7 @@ void CloudStreamer::ParseMessageCallback(QString data){
                        if(m_signInThread.get()){
                            m_signInThread->detach();
                        }
+                       addLogToEdit(UI_INFO , "maybe should go!");
                        StopReportStatusTimer();
                        StartReportStatusTimer();
                    }

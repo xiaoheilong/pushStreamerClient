@@ -65,14 +65,14 @@ void WsAppConnection::on_failure(websocketpp::connection_hdl hdl) {
 
 void WsAppConnection::on_pong(websocketpp::connection_hdl hdl , std::string msg) {
     std::string message = "";
-    c.send(hdl, message, websocketpp::frame::opcode::PONG);
+    //c.send(hdl, message, websocketpp::frame::opcode::PONG);
     c.get_alog().write(websocketpp::log::alevel::app, "recv ping: " + msg);
 }
 
-int  WsAppConnection::Send(std::string msg){
+int  WsAppConnection::Send(std::string msg , OpcodeValue opcode1){
     if(!msg.empty()){
         if(m_isConnected){
-            c.send(hdl_ ,msg , websocketpp::frame::opcode::text);
+            c.send(hdl_ ,msg , opcode1);
             c.get_alog().write(websocketpp::log::alevel::app, "send msg: " + msg);
             return 0;
         }
@@ -85,8 +85,9 @@ void WsAppConnection::SetCallback(OutterInterfaceConnection *outter){
     m_outter = outter;
 }
 
-void WsAppConnection::on_ping(websocketpp::connection_hdl hdl, std::string msg) {
-
+bool WsAppConnection::on_ping(websocketpp::connection_hdl hdl, std::string msg) {
+    //Send("test", websocketpp::frame::opcode::pong);
+    return true;
 }
 
 void WsAppConnection::onTimer(const boost::system::error_code& ec)
@@ -160,6 +161,11 @@ void WsAppConnection::close()
     m_isConnected = false;
 
     c.close(hdl_, websocketpp::close::status::normal, "");
+//    if(thread_.get()){
+//        if(thread_->joinable()){
+//            thread_->join();
+//        }
+//    }
 }
 
 void WsAppConnection::terminate()

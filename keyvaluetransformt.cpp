@@ -5,7 +5,6 @@
 #include <stdio.h>
 #include <string>
 #include <memory>
-#include "easywsclient.hpp"
 #include <iostream>
 #include "CloudGame.h"
 #include <windows.h>
@@ -137,8 +136,9 @@ void KeyValueTransformt::ReverseBounce(float x , float y){
                 if(!KeyUp(value)){
                     NSSleep(50);
                     KeyUp(value);
+                }else{
+                    NSSleep(1);
                 }
-                NSSleep(1);
             });
             AddKeyValueToThread(callback);
     }
@@ -195,8 +195,9 @@ void KeyValueTransformt::ReverseBounce(float x , float y){
                     if(!KeyDown(value)){
                         KeyUp(value);
                         KeyDown(value);
+                    }else{
+                        NSSleep(1);
                     }
-                    NSSleep(1);
                 });
                 AddKeyValueToThread(callback);
         }
@@ -225,8 +226,9 @@ void KeyValueTransformt::DirectionAllUp(){
               if(!KeyUp(value)){
                  NSSleep(50);
                  KeyUp(value);
+              }else{
+                 NSSleep(1);
               }
-              NSSleep(1);
           });
           AddKeyValueToThread(callback);
     }
@@ -247,11 +249,23 @@ int KeyValueTransformt::KeyDown_C(int keyValue){
             callback.m_type = ConsumerKeyboardValueSpace::KeyBoardType::NORMAL_KEY_ACTION;
             callback.m_pointer = nullptr;
             callback.m_callback = std::bind([key](){
-                if(!KeyDown(key)){
-                   KeyUp(key);
-                   KeyDown(key);
+                if(1 !=key && 2 != key && 3 != key){
+                    if(!KeyDown(key)){
+                       KeyUp(key);
+                       KeyDown(key);
+                    }else{
+                        NSSleep(1);
+                    }
+                }else{
+//                    QString logStr = QString("MouseDown key=%1").arg(key);
+//                    MessageBoxA(NULL , logStr.toStdString().data() , "just for fun" , MB_OK);
+                    if(!MouseDown(16383, 16383 , key)){
+                        NSSleep(50);
+                        MouseDown(16383, 16383 , key);
+                    }else{
+                        NSSleep(1);
+                    }
                 }
-                NSSleep(1);
             });
             AddKeyValueToThread(callback);
         }
@@ -277,11 +291,23 @@ int KeyValueTransformt::KeyUP_C(int keyValue){
             callback.m_type = ConsumerKeyboardValueSpace::KeyBoardType::NORMAL_KEY_ACTION;
             callback.m_pointer = nullptr;
             callback.m_callback = std::bind([key](){
-                if(!KeyUp(key)){
-                    NSSleep(50);
-                    KeyUp(key);
+                if(1 !=key && 2 != key && 3 != key){
+                    if(!KeyUp(key)){
+                        NSSleep(50);
+                        KeyUp(key);
+                    }else{
+                        NSSleep(1);
+                    }
+                }else{
+//                    QString logStr = QString("MouseUp key=%1").arg(key);
+//                    MessageBoxA(NULL , logStr.toStdString().data() , "just for fun" , MB_OK);
+                    if(!MouseUp(16383, 16383 , 0)){
+                        NSSleep(50);
+                        MouseUp(16383, 16383 , 0);
+                    }else{
+                        NSSleep(1);
+                    }
                 }
-                NSSleep(1);
             });
             AddKeyValueToThread(callback);
         }
@@ -306,8 +332,9 @@ int KeyValueTransformt::MouseMove_C(int x, int y, int code){
         if(!MouseMove(x, y ,code)){
             NSSleep(50);
             MouseMove(x, y ,code);
+        }else{
+            NSSleep(1);
         }
-        NSSleep(1);
     });
     AddKeyValueToThread(callback);
     return 0;
@@ -327,8 +354,9 @@ int KeyValueTransformt::MouseUp_C(int x, int y, int code){
         if(!MouseUp(x, y , code)){
             NSSleep(50);
             MouseUp(x, y , code);
+        }else{
+            NSSleep(1);
         }
-        NSSleep(1);
     });
     return 0;
 }
@@ -348,8 +376,9 @@ int KeyValueTransformt::MouseDown_C(int x, int y, int code){
         if(!MouseDown(x, y , code)){
             NSSleep(50);
             MouseDown(x, y , code);
+        }else{
+            NSSleep(1);
         }
-       NSSleep(1);
     });
     AddKeyValueToThread(callback);
    return 0;

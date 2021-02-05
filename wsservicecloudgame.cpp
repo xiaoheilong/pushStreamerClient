@@ -1,5 +1,4 @@
 ﻿#include "wsservicecloudgame.h"
-//#include "easywsclient.hpp"
 #include "json/json.h"
 #include <QMessageBox>
 //////////////WSCloudGameService

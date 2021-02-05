@@ -37,6 +37,8 @@ public:
 signals:
     void  RecordSignal(QString flagStr , QString logStr);
     void  DisConnect();
+private slots:
+    void OnKeyPingTimer();
 protected:
     virtual void run();
 
@@ -51,6 +53,9 @@ public:
 private:
     void StartWebSocket();
     void CloseWebsocket();
+
+    void StartKeyPingTimer();
+    void StopKeyPingTImer();
 private:
     bool m_threadFlag;
     QString m_wsUrl ;
@@ -58,6 +63,8 @@ private:
 protected:
     std::shared_ptr<KeyValueTransformt> m_keyBoardConfig;
     std::shared_ptr<wsBoostConnect>  m_wsBoostSocket;
+    QTimer *m_keyPingTimer;
+    QThread   * m_keyPingThread;
 };
 
 enum UI_MODE{
@@ -165,9 +172,10 @@ private:
     QString m_controlUrl;
     FILE * m_file;
     QString m_gameId;
-    std::shared_ptr<QTimer> m_gameStatusTimer;
+    QTimer *m_gameStatusTimer;
     std::shared_ptr<std::thread> m_startGameThread;
     std::shared_ptr<std::thread> m_stopGameThread;
     std::shared_ptr<std::thread> m_signInThread;
+    QThread * m_gameStatusThread;
 };
 #endif // CLOUDSTREAMER_H

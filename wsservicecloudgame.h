@@ -5,7 +5,6 @@
 #include "wsservicecloudgamethread.h"
 
 using namespace WSServiceSpace;
-using easywsclient::WebSocket;
 class WSCloudGameService:public QObject ,public WsServiceBase
 {
      Q_OBJECT

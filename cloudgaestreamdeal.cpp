@@ -7,7 +7,6 @@
 #include <stdio.h>
 #include <string>
 #include <memory>
-#include "easywsclient.hpp"
 #include <iostream>
 #include "CloudGame.h"
 

@@ -131,9 +131,9 @@ int GenerateMiniDump(PEXCEPTION_POINTERS pExceptionPointers)
         KeyMouseClose();
     }
 
-    if(wsServiceCloudGame.get()){
-        wsServiceCloudGame->DisconnectWS();
-    }
+//    if(wsServiceCloudGame.get()){
+//        wsServiceCloudGame->DisconnectWS();
+//    }
     // 定义函数指针
     typedef BOOL(WINAPI * MiniDumpWriteDumpT)(
         HANDLE,
@@ -211,6 +211,8 @@ int main(int argc, char *argv[])
         // QMessageBox::information(nullptr , "error!" , "wsServiceCloudGame or cloudGameServiceIterator shouldn't be empty!");
          return  -1;
     }
+    //char * ptr = nullptr;
+    //*ptr =0;
     wsServiceCloudGame->BindOutter(cloudGameServiceIterator);
     w.BindServiceIterator(cloudGameServiceIterator);
     ///中转服务器

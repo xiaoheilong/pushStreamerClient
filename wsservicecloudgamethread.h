@@ -1,10 +1,8 @@
 ﻿#ifndef WSSERVICECLOUDGAMETHREAD_H
 #define WSSERVICECLOUDGAMETHREAD_H
-#include "easywsclient.hpp"
 #include "websocketConnection.h"
 #include <QObject>
 #include <QThread>
-using easywsclient::WebSocket;
 using namespace  WebSocketNamsSpace;
 class WsServiceCloudGameThread : public QThread , public OutterInterfaceConnection
 {

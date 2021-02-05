@@ -5,7 +5,7 @@
 #include <functional>
 namespace WebSocketNamsSpace{
 typedef websocketpp::client<websocketpp::config::asio_client> client;
-
+typedef websocketpp::frame::opcode::value  OpcodeValue;
 using websocketpp::lib::placeholders::_1;
 using websocketpp::lib::placeholders::_2;
 typedef websocketpp::config::asio_client::message_type::ptr message_ptr;
@@ -40,7 +40,7 @@ public:
     void close();
     void terminate();
     bool isConnected();
-    int  Send(std::string msg);
+    int  Send(std::string msg ,OpcodeValue opcode1 = OpcodeValue::text);
     void SetCallback(OutterInterfaceConnection *outter);
 protected:
     void on_open(websocketpp::connection_hdl hdl);
@@ -53,7 +53,7 @@ protected:
 
     void on_pong(websocketpp::connection_hdl hdl , std::string msg);
 
-    void on_ping(websocketpp::connection_hdl hdl, std::string msg);
+    bool on_ping(websocketpp::connection_hdl hdl, std::string msg);
 
     void onTimer(const boost::system::error_code& ec);
 

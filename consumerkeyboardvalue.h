@@ -63,7 +63,8 @@ namespace ConsumerKeyboardValueSpace{
                     }
                 }
                 if(isRunning()){
-                    wait();
+                    this->quit();
+                    this->wait();
                 }
             }
 
@@ -132,6 +133,7 @@ namespace ConsumerKeyboardValueSpace{
                         EraseFirstElemt();
                     }
                 }
+                this->exec();
             }
 
         void PushTValue(T value){

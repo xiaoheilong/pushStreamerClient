@@ -33,7 +33,25 @@ greaterThan(QT_MAJOR_VERSION, 4) {
 INCLUDEPATH += $$PWD/./cloudGame/include
 
 
+////////推流版本号控制
+#应用图标
+#RC_ICONS += icon.ico
+#版本号
+VERSION = 1.0.0.1
+#中文
+RC_LANG = 0x0004
+# 公司名
+QMAKE_TARGET_COMPANY =广州玖的
+# 产品名称
+QMAKE_TARGET_PRODUCT = pushStreamer
+# 详细描述
+QMAKE_TARGET_DESCRIPTION = push streamer and deal some servers message
+# 版权
+QMAKE_TARGET_COPYRIGHT = jiudi
 
+
+
+////////
 #加入调试信息
 QMAKE_CFLAGS_RELEASE += -g
 QMAKE_CXXFLAGS_RELEASE += -g
@@ -41,21 +59,33 @@ QMAKE_CXXFLAGS_RELEASE += -g
 QMAKE_CFLAGS_RELEASE -= -O2
 QMAKE_CXXFLAGS_RELEASE -= -O2
 #release在最后link时默认有"-s”参数，表示"Omit all symbol information from the output file"，因此要去掉该参
-win32:!msvc{
-    QMAKE_LFLAGS_RELEASE = -mthreads
+CONFIG += release
+win32:CONFIG(debug, debug|release):{
+  win32:!msvc{
+      QMAKE_LFLAGS_RELEASE = -mthreads
+  }else{
+      message("msvc version debug msvc")
+      QMAKE_CFLAGS_RELEASE = -O2 -MD -Zi
+      QMAKE_LFLAGS_RELEASE = /INCREMENTAL:NO /DEBUG
+      QMAKE_LFLAGS_RELEASE += /MAP
+      QMAKE_CFLAGS_RELEASE += /Zi
+      QMAKE_LFLAGS_RELEASE += /debug /opt:ref
+      QMAKE_LFLAGS_RELEASE += /MAP /DEBUG /opt:ref /INCREMENTAL:NO
+  }
 }else{
-    #message("msvc version")
-    QMAKE_CFLAGS_RELEASE = -O2 -MD -Zi
-    QMAKE_LFLAGS_RELEASE = /INCREMENTAL:NO /DEBUG
-    QMAKE_LFLAGS_RELEASE += /MAP
-    QMAKE_CFLAGS_RELEASE += /Zi
-    QMAKE_LFLAGS_RELEASE += /debug /opt:ref
-    QMAKE_LFLAGS_RELEASE += /MAP /DEBUG /opt:ref /INCREMENTAL:NO
+  win32:!msvc{
+      QMAKE_LFLAGS_RELEASE = -mthreads
+  }else{
+      message("msvc version release msvc")
+      QMAKE_LFLAGS_RELEASE = /INCREMENTAL:NO /DEBUG
+      QMAKE_CXXFLAGS_RELEASE = $$QMAKE_CFLAGS_RELEASE_WITH_DEBUGINFO
+      QMAKE_LFLAGS_RELEASE = $$QMAKE_LFLAGS_RELEASE_WITH_DEBUGINFO
+
+  }
 }
 
 
 SOURCES += \
-        cloudGame/include/easywsclient.cpp \
         cloudGame/include/lib_json/json_reader.cpp \
         cloudGame/include/lib_json/json_value.cpp \
         cloudGame/include/lib_json/json_writer.cpp \
@@ -73,7 +103,6 @@ SOURCES += \
     websocketconnection.cpp
 
 HEADERS += \
-        cloudGame/include/easywsclient.hpp \
         cloudGame/include/json/autolink.h \
         cloudGame/include/json/config.h \
         cloudGame/include/json/features.h \
@@ -105,7 +134,7 @@ FORMS += \
    # cloudstreamerStreamer.ui
 
 WEBSOCKET_INCLUDE_PATH=E:/local/boost_1_75_0
-WEBSOCKET_LIBS_PATH=E:/local/boost_1_75_0/lib64-msvc-14.0
+WEBSOCKET_LIBS_PATH=E:/local/boost_1_75_0/bin/vc14.0/lib/#E:/local/boost_1_75_0/lib64-msvc-14.0
 
 INCLUDEPATH += $$PWD/cloudGame/include
 INCLUDEPATH += $$PWD/websocketpp
@@ -125,9 +154,9 @@ LIBS += \
       -lUser32 \
       -lDbghelp
 
-LIBS += $$WEBSOCKET_LIBS_PATH\libboost_random-vc140-mt-gd-x64-1_75.lib
-LIBS += $$WEBSOCKET_LIBS_PATH\libboost_date_time-vc140-mt-gd-x64-1_75.lib
-LIBS += $$WEBSOCKET_LIBS_PATH\libboost_regex-vc140-mt-gd-x64-1_75.lib
+LIBS += $$WEBSOCKET_LIBS_PATH\libboost_random-vc140-mt-x64-1_75.lib
+LIBS += $$WEBSOCKET_LIBS_PATH\libboost_date_time-vc140-mt-x64-1_75.lib
+LIBS += $$WEBSOCKET_LIBS_PATH\libboost_regex-vc140-mt-x64-1_75.lib
 DISTFILES += \
     cloudGame/include/lib_json/sconsc4ript
 
