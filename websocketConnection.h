@@ -38,6 +38,7 @@ public:
     int  init(std::string wsUrl);
     void connect();
     void close();
+    void closeByAccident();
     void terminate();
     bool isConnected();
     int  Send(std::string msg ,OpcodeValue opcode1 = OpcodeValue::text);

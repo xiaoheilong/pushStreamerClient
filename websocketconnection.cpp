@@ -2,13 +2,29 @@
 
 namespace WebSocketNamsSpace{
 WsAppConnection::WsAppConnection():thread_(NULL) , m_uri("") , m_isConnected(false), m_outter(NULL){
+    hdl_.reset();
+    thread_.reset();
 
+    c.set_access_channels(websocketpp::log::alevel::all);
+    c.clear_access_channels(websocketpp::log::alevel::frame_payload);
+    c.clear_access_channels(websocketpp::log::alevel::frame_header);
+    c.init_asio();
+    c.start_perpetual();
+    thread_ = websocketpp::lib::make_shared<websocketpp::lib::thread>(&client::run, &c);
 }
 
 WsAppConnection::~WsAppConnection(){
-    if(m_isConnected){
+    try{
+        c.stop();
+        c.stop_perpetual();
         close();
-        terminate();
+        if(thread_.get()){
+            thread_->join();
+            thread_.reset();
+        }
+    }catch(websocketpp::exception const & e){
+        int a =0;
+        a++;
     }
 }
 
@@ -46,7 +62,7 @@ void WsAppConnection::on_message(websocketpp::connection_hdl hdl, message_ptr ms
 void WsAppConnection::on_close(websocketpp::connection_hdl hdl) {
     std::string message = "connection is close!";
     c.get_alog().write(websocketpp::log::alevel::app, "Tx: " + message);
-    m_isConnected = false;
+    //m_isConnected = false;
     if(m_outter)
     {
         m_outter->DisconnectedCallback(" websocket disconnect!", 0);
@@ -56,7 +72,7 @@ void WsAppConnection::on_close(websocketpp::connection_hdl hdl) {
 void WsAppConnection::on_failure(websocketpp::connection_hdl hdl) {
     std::string message = "connection is failure!";
     c.get_alog().write(websocketpp::log::alevel::app, "Tx: " + message);
-    m_isConnected = false;
+    //m_isConnected = false;
     if(m_outter)
     {
         m_outter->FailureCallback("websocket failure!", 0);
@@ -69,11 +85,65 @@ void WsAppConnection::on_pong(websocketpp::connection_hdl hdl , std::string msg)
     c.get_alog().write(websocketpp::log::alevel::app, "recv ping: " + msg);
 }
 
+
+// UTF8转std:string
+// 转换过程：先将utf8转双字节Unicode编码，再通过WideCharToMultiByte将宽字符转换为多字节。
+std::string UTF8_To_string(const std::string& str)
+{
+    int nwLen = MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, NULL, 0);
+    wchar_t* pwBuf = new wchar_t[nwLen + 1];    //一定要加1，不然会出现尾巴
+    memset(pwBuf, 0, nwLen * 2 + 2);
+    MultiByteToWideChar(CP_UTF8, 0, str.c_str(), str.length(), pwBuf, nwLen);
+    int nLen = WideCharToMultiByte(CP_ACP, 0, pwBuf, -1, NULL, NULL, NULL, NULL);
+    char* pBuf = new char[nLen + 1];
+    memset(pBuf, 0, nLen + 1);
+    WideCharToMultiByte(CP_ACP, 0, pwBuf, nwLen, pBuf, nLen, NULL, NULL);
+
+    std::string strRet = pBuf;
+
+    delete []pBuf;
+    delete []pwBuf;
+    pBuf = NULL;
+    pwBuf = NULL;
+
+    return strRet;
+}
+
+// std:string转UTF8
+std::string string_To_UTF8(const std::string& str)
+{
+    int nwLen = ::MultiByteToWideChar(CP_ACP, 0, str.c_str(), -1, NULL, 0);
+    wchar_t* pwBuf = new wchar_t[nwLen + 1];    //一定要加1，不然会出现尾巴
+    ZeroMemory(pwBuf, nwLen * 2 + 2);
+    ::MultiByteToWideChar(CP_ACP, 0, str.c_str(), str.length(), pwBuf, nwLen);
+    int nLen = ::WideCharToMultiByte(CP_UTF8, 0, pwBuf, -1, NULL, NULL, NULL, NULL);
+    char* pBuf = new char[nLen + 1];
+    ZeroMemory(pBuf, nLen + 1);
+    ::WideCharToMultiByte(CP_UTF8, 0, pwBuf, nwLen, pBuf, nLen, NULL, NULL);
+
+    std::string strRet(pBuf);
+
+    delete []pwBuf;
+    delete []pBuf;
+    pwBuf = NULL;
+    pBuf  = NULL;
+
+    return strRet;
+}
+
 int  WsAppConnection::Send(std::string msg , OpcodeValue opcode1){
     if(!msg.empty()){
         if(m_isConnected){
-            c.send(hdl_ ,msg , opcode1);
-            c.get_alog().write(websocketpp::log::alevel::app, "send msg: " + msg);
+            std::string data = string_To_UTF8(msg);
+            if(!data.empty())
+            {
+                try{
+                    c.send(hdl_ ,msg , opcode1);
+                    c.get_alog().write(websocketpp::log::alevel::app, "send msg: " + msg);
+                }catch(websocketpp::exception const & e){
+                     c.get_alog().write(websocketpp::log::alevel::fail, "send msg failure: " + msg);
+                }
+            }
             return 0;
         }
     }
@@ -105,7 +175,7 @@ void WsAppConnection::onTimer(const boost::system::error_code& ec)
 void WsAppConnection::On_Interrupt(websocketpp::connection_hdl hdl){
     std::string msg = "have a Interrupt!\n";
     c.get_alog().write(websocketpp::log::alevel::app,  msg);
-    m_isConnected = false;
+    //m_isConnected = false;
     if(m_outter)
     {
         m_outter->InterruptCallback("websocket Interrupt!", 0);
@@ -122,23 +192,12 @@ int WsAppConnection::init(std::string wsUrl)
         return -1;
     }
     m_uri = wsUrl;
-    c.set_access_channels(websocketpp::log::alevel::all);
-    c.clear_access_channels(websocketpp::log::alevel::frame_payload);
-    c.clear_access_channels(websocketpp::log::alevel::frame_header);
-    c.init_asio();
     c.set_message_handler(websocketpp::lib::bind(&WsAppConnection::on_message, this, _1, _2));
     c.set_open_handler(websocketpp::lib::bind(&WsAppConnection::on_open, this, _1));
     c.set_close_handler(websocketpp::lib::bind(&WsAppConnection::on_close, this, _1));
     c.set_fail_handler(websocketpp::lib::bind(&WsAppConnection::on_failure, this, _1));
     c.set_pong_handler(websocketpp::lib::bind(&WsAppConnection::on_pong, this, _1, _2));
     c.set_interrupt_handler(websocketpp::lib::bind(&WsAppConnection::On_Interrupt, this, _1));
-    //c.set_ping_handler(websocketpp::lib::bind(&WsAppConnection::on_ping, this, _1, _2));
-    c.start_perpetual();
-    ///timer
-//    m_timer = std::make_shared<boost::asio::deadline_timer>(c.get_io_service(), boost::posix_time::seconds(5));
-//    m_timer->async_wait(bind(&WsAppConnection::onTimer,this ,  _1));
-    ///
-    thread_ = websocketpp::lib::make_shared<websocketpp::lib::thread>(&client::run, &c);
     return 0;
 }
 
@@ -158,22 +217,32 @@ void WsAppConnection::connect()
 }
 void WsAppConnection::close()
 {
+    if(m_isConnected){
+        try{
+            c.close(hdl_, websocketpp::close::status::normal, "");
+        }catch(websocketpp::exception const & e){
+            int a =0;
+            a++;
+        }
+    }
     m_isConnected = false;
+}
 
-    c.close(hdl_, websocketpp::close::status::normal, "");
-//    if(thread_.get()){
-//        if(thread_->joinable()){
-//            thread_->join();
-//        }
-//    }
+void WsAppConnection::closeByAccident(){
+    if(m_isConnected){
+        try{
+            c.close(hdl_, websocketpp::close::status::normal, "");
+        }catch(websocketpp::exception const & e){
+            int a=0;
+            a++;
+        }
+    }
+    m_isConnected = false;
 }
 
 void WsAppConnection::terminate()
 {
-    c.stop();
-    c.stop_perpetual();
-    thread_->join();
-    m_isConnected = false;
+    return;
 }
 
 

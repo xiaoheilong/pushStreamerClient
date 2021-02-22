@@ -37,8 +37,10 @@ public:
 signals:
     void  RecordSignal(QString flagStr , QString logStr);
     void  DisConnect();
-private slots:
+    void AccidentalSignal();
+protected slots:
     void OnKeyPingTimer();
+    void AccidentalTermination();
 protected:
     virtual void run();
 
@@ -56,6 +58,12 @@ private:
 
     void StartKeyPingTimer();
     void StopKeyPingTImer();
+
+    void StartAccidental();
+    void StopAccidental();
+
+    void StartReconnectThread();
+    void StopReconnectThread();
 private:
     bool m_threadFlag;
     QString m_wsUrl ;
@@ -65,6 +73,7 @@ protected:
     std::shared_ptr<wsBoostConnect>  m_wsBoostSocket;
     QTimer *m_keyPingTimer;
     QThread   * m_keyPingThread;
+    std::shared_ptr<std::thread>m_reconnectThread;
 };
 
 enum UI_MODE{

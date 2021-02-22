@@ -352,9 +352,9 @@ QString AssembleWSServer(QString wsUrl ,  QString key , QString deviceNo){
 
 ////////////
 KeyBoardThread::KeyBoardThread(QObject * parent ):QThread(parent) , m_threadFlag(false), m_wsUrl("") , m_loginCommand(""),
-    m_wsBoostSocket(NULL), m_keyPingTimer(NULL), m_keyPingThread(NULL)// , m_keyBoardConfig(nullptr)
+    m_wsBoostSocket(NULL), m_keyPingTimer(NULL), m_keyPingThread(NULL), m_reconnectThread(NULL)
 {
-
+    connect(this , SIGNAL(AccidentalSignal()) , this , SLOT(AccidentalTermination()),Qt::DirectConnection);
 }
 
 KeyBoardThread::~KeyBoardThread(){
@@ -363,6 +363,8 @@ KeyBoardThread::~KeyBoardThread(){
     }
    CloseWebsocket();
    StopKeyPingTImer();
+   StopReconnectThread();
+   disconnect(this , SIGNAL(AccidentalSignal()) , this , SLOT(AccidentalTermination()));
 }
 
 void KeyBoardThread::StartKeyPingTimer(){
@@ -371,7 +373,8 @@ void KeyBoardThread::StartKeyPingTimer(){
     }
     if(!m_keyPingTimer){
         m_keyPingTimer =new QTimer(0);
-        m_keyPingTimer->setInterval(800);
+        //m_keyPingTimer->setInterval(800);
+        m_keyPingTimer->setInterval(2000);
         m_keyPingThread = new QThread();
         m_keyPingThread->start();
         m_keyPingTimer->moveToThread(m_keyPingThread);
@@ -415,6 +418,25 @@ void KeyBoardThread::StopKeyPingTImer(){
 //    }
 }
 
+void KeyBoardThread::StartReconnectThread(){
+    StopReconnectThread();
+    m_reconnectThread = std::make_shared<std::thread>([&](){
+        StopAccidental();
+        StartAccidental();
+    });
+    if(m_reconnectThread){
+        m_reconnectThread->detach();
+    }
+}
+
+void KeyBoardThread::StopReconnectThread(){
+    if(m_reconnectThread.get()){
+        if(m_reconnectThread->joinable()){
+            m_reconnectThread->join();
+        }
+    }
+}
+
 
 void KeyBoardThread::OnKeyPingTimer(){
     if(g_This){
@@ -432,18 +454,18 @@ void KeyBoardThread::OnKeyPingTimer(){
 }
 
 void KeyBoardThread::StartWebSocket(){
-    m_wsBoostSocket = std::make_shared<wsBoostConnect>();
-    m_wsBoostSocket->init(m_wsUrl.toStdString());
-    m_wsBoostSocket->connect();
-    m_wsBoostSocket->SetCallback(this);
+    if(!m_wsUrl.isEmpty()){
+        m_wsBoostSocket = std::make_shared<wsBoostConnect>();
+        m_wsBoostSocket->init(m_wsUrl.toStdString());
+        m_wsBoostSocket->connect();
+        m_wsBoostSocket->SetCallback(this);
+    }
 }
 
 void KeyBoardThread::CloseWebsocket(){
     if(m_wsBoostSocket.get()){
-        if(m_wsBoostSocket->isConnected()){
-            m_wsBoostSocket->terminate();
-            m_wsBoostSocket->close();
-        }
+        m_wsBoostSocket->close();
+        m_wsBoostSocket.reset();
     }
 }
 
@@ -458,9 +480,12 @@ void KeyBoardThread::ConnectedCallback(std::string msg , int error){
     }
 }
 
+void KeyBoardThread::AccidentalTermination(){
+    StartReconnectThread();
+}
+
 void KeyBoardThread::DisconnectedCallback(std::string msg , int error){
-     stop();
-     start(m_wsUrl , m_loginCommand);
+     emit AccidentalSignal();
      emit RecordSignal(UI_ERROR ,QString("ws socket  disconnect  %s!").arg(m_wsUrl.toStdString().c_str()));
 }
 
@@ -724,14 +749,12 @@ void KeyBoardThread::MessageCallback(std::string message , int error){
 }
 
 void KeyBoardThread::FailureCallback(std::string msg , int error){
-    stop();
-    start(m_wsUrl , m_loginCommand);
+    emit AccidentalSignal();
     emit RecordSignal(UI_ERROR ,QString("ws socket occure failure  %s!").arg(m_wsUrl.toStdString().c_str()));
 }
 
 void KeyBoardThread::InterruptCallback(std::string msg , int error){
-    stop();
-    start(m_wsUrl , m_loginCommand);
+    emit AccidentalSignal();
     emit RecordSignal(UI_ERROR ,QString("ws socket occure Interrupt  %s!").arg(m_wsUrl.toStdString().c_str()));
 }
 
@@ -772,6 +795,10 @@ bool KeyBoardThread::start(QString wsUrl , QString loginCommand){
     return true;
 }
 
+void  KeyBoardThread::StartAccidental(){
+    QThread::start();
+}
+
 bool  KeyBoardThread::stop(){
     StopKeyPingTImer();
     if(!KeyMouseClose()){
@@ -786,6 +813,19 @@ bool  KeyBoardThread::stop(){
     CloseWebsocket();
     g_This->addLogToEdit(UI_ERROR, " KeyBoardThread quit!");
     return true;
+}
+
+void KeyBoardThread::StopAccidental(){
+    if(isRunning()){
+        this->quit();
+        this->wait();
+    }
+    if(m_wsBoostSocket.get()){
+        m_wsBoostSocket->closeByAccident();
+        m_wsBoostSocket.reset();
+    }
+
+    g_This->addLogToEdit(UI_ERROR, " KeyBoardThread quit!");
 }
 ///
 void KeyBoardThread::SetKeyBoardModel(QString nameKeyTablePath , QString defaultKeyBoardPath , QString gameKeyBoardPath){

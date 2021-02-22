@@ -25,8 +25,10 @@ public:
     //virtual int Send(QString msgData);
 signals:
     void Parse(QString data);
+    void AccidentalSignal();
 protected slots:
     void SendCallback(QString data);
+    void AccidentalTermination();
 private:
     //bool m_threadFlag;
     QString m_wsUrl ;
