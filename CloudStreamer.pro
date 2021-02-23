@@ -37,7 +37,7 @@ INCLUDEPATH += $$PWD/./cloudGame/include
 #应用图标
 #RC_ICONS += icon.ico
 #版本号
-VERSION = 1.0.0.3
+VERSION = 1.0.0.4
 #中文
 RC_LANG = 0x0004
 # 公司名
@@ -100,7 +100,8 @@ SOURCES += \
     keyvaluetransformt.cpp \
     gamecommandexetransformt.cpp \
     consumerkeyboardvalue.cpp \
-    websocketconnection.cpp
+    websocketconnection.cpp \
+    recordgameinfo.cpp
 
 HEADERS += \
         cloudGame/include/json/autolink.h \
@@ -126,7 +127,8 @@ HEADERS += \
     keyvaluetransformt.h \
     gamecommandexetransformt.h \
     consumerkeyboardvalue.h \
-    websocketConnection.h
+    websocketConnection.h \
+    recordgameinfo.h
 
 FORMS += \
         cloudstreamer.ui \

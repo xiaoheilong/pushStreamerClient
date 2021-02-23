@@ -149,6 +149,12 @@ private:
     void SetUIModel(UI_MODE model);
     void SignInWsService();
     void ActiveReportGameStatus();
+
+    void ProtectGstLaunch();
+    void StartProtectGstLaunch();
+    void StopProtectGstLaunch();
+
+    void RecoveryGame();
 public:
     void  addLogToEdit(QString flagStr , QString logStr);//添加一条日志到日志
 protected:
@@ -186,5 +192,9 @@ private:
     std::shared_ptr<std::thread> m_stopGameThread;
     std::shared_ptr<std::thread> m_signInThread;
     QThread * m_gameStatusThread;
+    std::shared_ptr<std::thread>m_gstlaunchProtectThead;
+    bool m_gstlaunchProtectTheadFlag;
+    std::function<void()> m_pushStreamerFunc;
+    std::function<void(int)> m_startGameFunc;
 };
 #endif // CLOUDSTREAMER_H

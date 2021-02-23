@@ -14,6 +14,8 @@
 
 #include "json/json.h"
 #include "keyvaluetransformt.h"
+#include "recordgameinfo.h"
+
 #include <QDir>
 #include <QProcess>
 #include <QMessageBox>
@@ -27,6 +29,7 @@
 #include <QCryptographicHash>
 #include <tlhelp32.h>
 using namespace std;
+using namespace RecordGameInfoSpace;
 //typedef KeyValueTransformtNamespace::KeyValueTransformt  KeyValueTransformt;
 //typedef KeyValueTransformtNamespace::DirectionKey   DirectionKey;
 //////////////////
@@ -44,6 +47,7 @@ static QString g_gStreamerLogPath = "d://gStreamer.txt";
 static QString g_signKey = "CGW1uQ1StIRE0MBVrQg7wcYQjgC2wRlLmAQ1ZofF8S2XKWMv0ZS587lnXZeW9bA1QFo9veTBswC2nAnrMoBUec30mxuWCF0A2h3dOwDcRLjfVrTri73ynYn3gSLBedDSn0S";
 static QString g_wsServerKey = "ND857fxx*3";
 static int g_reportGameStatusInteral = 8000;  //per ms
+const QString g_gstLaunchName = "gst-launch-1.0.exe";
 //推流和键盘默认配置文件在 streamConfig.ini文件中
 //////云游戏默认配置文件在   cloudGameConfig.ini文件中
 /// ////////////////
@@ -877,7 +881,7 @@ CloudStreamer::CloudStreamer(QWidget *parent) :
     ui(new Ui::CloudStreamer), m_isInstallDriver(false) , m_isPushStream(false) , m_isOpenKeyBoard(false),m_isWin32Init(false),
     m_keyBoardthreadFlag(false), m_keyBoardThread(nullptr),m_gamePath(""),m_fileSavePath(""),m_mode(DEFAULT_MODE),
     m_sessionId(""), m_deviceNo(""), m_controlUrl("") , m_file(NULL), m_gameStatusTimer(NULL),m_startGameThread(NULL),
-    m_stopGameThread(NULL),m_signInThread(NULL),m_gameStatusThread(NULL)
+    m_stopGameThread(NULL),m_signInThread(NULL),m_gameStatusThread(NULL), m_gstlaunchProtectThead(NULL), m_gstlaunchProtectTheadFlag(false)
 {
     ui->setupUi(this);
     ///////////init winsocket 32
@@ -975,6 +979,76 @@ CloudStreamer::~CloudStreamer()
     StopWorkThread(m_signInThread);
     disconnect(this , SIGNAL(InputLog(QString, QString)) , this , SLOT(on_inputLog(QString, QString)));
     delete ui;
+}
+
+void  CloudStreamer::ProtectGstLaunch(){
+    m_gstlaunchProtectTheadFlag = true;
+    //////////wait the gst-launch-1.0 is start success
+    QString appPath = QCoreApplication::applicationDirPath();
+    QString gstExePath = g_gstLaunchName;
+    while(!isProcessRunning(gstExePath.toLocal8Bit().data()) && m_gstlaunchProtectTheadFlag){
+        Sleep(1000);
+    }
+    addLogToEdit(UI_INFO , "start enter the loops which check gst-launch-1.0's status!\n");
+    ///////////
+    while(m_gstlaunchProtectTheadFlag){
+        /////check the status of gst-launch-1.0
+        bool result = isProcessRunning(gstExePath.toLocal8Bit().data());
+        if(!result){
+            addLogToEdit(UI_INFO , "gst-launch-1.0 is quit!\n");
+            if(!appPath.isEmpty()){
+                  m_pushStreamerFunc();
+            }else{
+                addLogToEdit(UI_ERROR , "gst-launch-1.0  appPath is empty!\n");
+            }
+
+        }else{
+            addLogToEdit(UI_INFO , "gst-launch-1.0 is running!\n");
+        }
+        //////////////check the status of game
+        result = GameIsAreadlyRunning(m_gameId);
+        if(!result){
+            m_startGameFunc(0);
+        }
+        Sleep(2000);
+    }
+
+    addLogToEdit(UI_INFO , "quit the loops which check gst-launch-1.0's status!\n");
+}
+
+void  CloudStreamer::StartProtectGstLaunch(){
+    m_gstlaunchProtectThead = std::make_shared<std::thread>(&CloudStreamer::ProtectGstLaunch , this);
+    if(m_gstlaunchProtectThead.get()){
+        m_gstlaunchProtectThead->detach();
+    }else{
+        addLogToEdit(UI_ERROR , "m_gstlaunchProtectThead init failure!\n");
+    }
+}
+
+void  CloudStreamer::StopProtectGstLaunch(){
+    if(m_gstlaunchProtectThead.get()){
+        m_gstlaunchProtectTheadFlag = false;
+        if(m_gstlaunchProtectThead->joinable()){
+            m_gstlaunchProtectThead->join();
+            m_gstlaunchProtectThead.reset();
+        }
+    }
+}
+
+void CloudStreamer::RecoveryGame(){
+    RecordGameInfo recordInfos;
+    int gameStatus = recordInfos.GetGameStatus();
+    QString rootJsonStr = recordInfos.GetGameInfo();
+    if(gameStatus){
+        ///////game is not close normally , then recovery the normal show
+        ///if the game's exe is running then show the gameWindow top modal
+        ///if the game's exe is doesn't running , then restart the game's exe
+        StopWorkThread(m_startGameThread);
+        m_startGameThread = std::make_shared<std::thread>(&CloudStreamer::StartGameCallback, this , rootJsonStr);
+        if(m_startGameThread.get()){
+            m_startGameThread->detach();
+        }
+    }
 }
 
 void    CloudStreamer::StopWorkThread(std::shared_ptr<std::thread> thread){
@@ -1233,12 +1307,15 @@ void CloudStreamer::on_pushButton_3_clicked()
 void CloudStreamer::on_pushButton_4_clicked()
 {
     //////
-    QString  wsUrl = ui->lineEdit_16->text();
-    if(wsUrl.isEmpty()){
-        //QMessageBox::information(this , "error!" ,"wsUrl shouldn't be empty!\n");
-        addLogToEdit(UI_ERROR , "wsUrl shouldn't be empty!\n");
-        return ;
-    }
+//    QString  wsUrl = ui->lineEdit_16->text();
+//    if(wsUrl.isEmpty()){
+//        //QMessageBox::information(this , "error!" ,"wsUrl shouldn't be empty!\n");
+//        addLogToEdit(UI_ERROR , "wsUrl shouldn't be empty!\n");
+//        return ;
+//    }
+//    char *testValue = NULL;
+//    int testNumber = strlen(testValue);
+//    std::cout<<*testValue<<std::endl;
 
 }
 ////////关闭键盘
@@ -1337,6 +1414,8 @@ void CloudStreamer::on_game_status_timer(){
 
 void CloudStreamer::StartGameCallback(QString data){
     addLogToEdit(UI_INFO , data);
+    RecordGameInfo recordInfos;
+    recordInfos.RecordInfo(data, 0);
     //QMessageBox::information(NULL , "information!" , "StartGameCallback");
     if(!data.isEmpty()){
         Json::Reader reader;
@@ -1397,24 +1476,30 @@ void CloudStreamer::StartGameCallback(QString data){
            }
            /////////
            ////////loginParam port replace to deviceNo
-           if(gameId.isEmpty()  || startGameParams.isEmpty()){
-                addLogToEdit(UI_INFO , "gameId or  startGameParams is empty!\n");
-           }else{
-               if(0 == startGameParams.compare("null"));{
-                   startGameParams.clear();
-                   ActiveReportGameStatus();
+           m_startGameFunc = std::bind([gameId , startGameParams,this ,  data](int forceValue){
+               QString startGameParamsEx = startGameParams;
+               if(gameId.isEmpty()  || startGameParamsEx.isEmpty()){
+                   addLogToEdit(UI_INFO , "gameId or  startGameParamsEx is empty!\n");
+               }else{
+                   if(0 == startGameParamsEx.compare("null"));{
+                       startGameParamsEx = "";
+                       ActiveReportGameStatus();
+                   }
                }
-           }
-           bool gameIsRunning = false;
-           gameIsRunning = GameIsAreadlyRunning(gameId);
-           if(gameIsRunning){
-               if(force > 0 ){
-                    KillAreadlyRunningGame(gameId);
-                    StartGameByGameId(gameId , startGameParams );
+               bool gameIsRunning = false;
+               gameIsRunning = GameIsAreadlyRunning(gameId);
+               if(gameIsRunning){
+                   if(forceValue > 0 ){
+                       KillAreadlyRunningGame(gameId);
+                       StartGameByGameId(gameId , startGameParamsEx );
+                   }
+               }else{
+                   StartGameByGameId(gameId , startGameParamsEx);
                }
-           }else{
-               StartGameByGameId(gameId , startGameParams);
-           }
+               RecordGameInfo recordInfos1;
+               recordInfos1.RecordInfo(data, 1);
+           }, _1);
+           m_startGameFunc(force);
            /////////////
            QString domain = serverUrl;
            QString pushUrl = "https://";
@@ -1422,7 +1507,9 @@ void CloudStreamer::StartGameCallback(QString data){
            serverUrl +=  ":";
            serverUrl += "4443";
            serverUrl += "/";
-           ret = closepush(roomId.toLocal8Bit().data() , serverUrl.toLocal8Bit().data());
+           m_pushStreamerFunc = std::bind([serverUrl,domain,roomId ,framerate,bitrate ,deadline,cpuused,x,y,mode,
+capmode, vol, this]{
+           int ret = closepush(roomId.toLocal8Bit().data() , serverUrl.toLocal8Bit().data());
            if(!ret){
                 //QMessageBox::information(this , "information!" ,"close stream failure!\n");
                 addLogToEdit(UI_ERROR ,  "close stream failure!\n");
@@ -1440,6 +1527,9 @@ void CloudStreamer::StartGameCallback(QString data){
                 return;
            }
            addLogToEdit(UI_INFO , "push stream success!\n");
+           });
+
+           m_pushStreamerFunc();
            /////////
            if(m_keyBoardThread.get()){
                m_keyBoardThread->stop();
@@ -1460,6 +1550,8 @@ void CloudStreamer::StartGameCallback(QString data){
            //ui->textEdit->setText(keyboardLoginParams);
            m_keyBoardThread->start(/*controlUrl*/wsUrl ,keyboardLoginParams);
            emit this->ChangeCloudStreamerStatue("start!");
+           ////start the thread protect gst-launch-1.0
+           StartProtectGstLaunch();
            addLogToEdit(UI_INFO , "keyBoard connection finish!\n");
         }
     }
@@ -1589,6 +1681,7 @@ QString CloudStreamer::GetGameStopByID(QString gameId){
 void CloudStreamer::StopGameCallback(QString data){
     QString gameName = GetValueByGameID(m_gameId , "gameExeName");
     QString  testStr = WSServiceTransferSignStringEx(m_deviceNo , m_sessionId , m_gameId ,gameName);
+    StopProtectGstLaunch();
     emit m_cloudGameServiceIterator->Send(testStr);
     emit ui->pushButton_3->clicked();
     //m_gameId.clear();
@@ -1631,6 +1724,8 @@ void CloudStreamer::StopGameCallback(QString data){
            if(!gamePath.isEmpty()){
                StartGame(gamePath.toLocal8Bit().data() , NULL);
                ActiveReportGameStatus();
+               RecordGameInfo recordInfos1;
+               recordInfos1.RecordInfo(0);
                addLogToEdit(UI_INFO , "game stop success!\n");
            }
         }
@@ -1815,6 +1910,8 @@ void CloudStreamer::SignInCloudGameCallback(QString paramData){
         if(root.isMember("sessionId")){
             if(root["sessionId"].isString()){
                     m_sessionId = root["sessionId"].asCString();
+                    ///////signIn succes then recovery the game status
+                    RecoveryGame();
             }
             //QString data = "{\"clientType\":\"2\",\"type\":\"SignIn\"}";
 //            if(m_cloudGameServiceIterator.get()){
@@ -1896,7 +1993,6 @@ void CloudStreamer::ParseMessageCallback(QString data){
                         if(m_startGameThread.get()){
                             m_startGameThread->detach();
                         }
-                        //StartGameCallback(rootJsonStr.c_str());
                     }else if(msgType.compare("StopGame") == 0){//stop game
                         //StopGameCallback(rootJsonStr.c_str());
                        StopWorkThread(m_stopGameThread);

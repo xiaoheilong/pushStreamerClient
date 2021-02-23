@@ -55,6 +55,19 @@ QVariant DealIniFile::GetValue(QString key,QString keyValue , QString goalKey){
      return QVariant();
 }
 
+
+bool  DealIniFile::SetValue(QString topic , QString key , QString value){
+    if(!topic.isEmpty() && !key.isEmpty()){
+        if(m_iniFileParse.get()){
+            QString keyStr= topic + "/";
+            keyStr += key;
+            m_iniFileParse->setValue(keyStr , value.toLocal8Bit().data());
+            return true;
+        }
+    }
+    return false;
+}
+
 }
 
 

@@ -68,7 +68,7 @@ CLOUDGAME_API bool MouseDown(int x, int y, int code);
 
 //启动游戏
 //gamepath 游戏路径 command 命令参数
-CLOUDGAME_API bool StartGame(char * gamepath, char * command);
+CLOUDGAME_API bool StartGame(char * gamepath, char * command , int showMode = SW_SHOW);
 
 //下载文件
 //url 下载路径 filepath 文件路径
