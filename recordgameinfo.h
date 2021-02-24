@@ -10,10 +10,12 @@ namespace RecordGameInfoSpace{
         explicit RecordGameInfo();
         ~RecordGameInfo();
     public:
-        void RecordInfo(QString startGameParame ,  int gameStatus);
+        void RecordInfo(QString startGameParame , QString gameId, int gameStatus);
         void RecordInfo(int gameStatus);
+        void RecordInfo(QString gameId,int gameStatus);
         QString GetGameInfo();
         int GetGameStatus();
+        QString GetGameId();
 
     };
 }
