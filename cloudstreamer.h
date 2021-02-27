@@ -167,6 +167,9 @@ protected:
     void    StopWorkThread(std::shared_ptr<std::thread> thread);
     void    StartReportStatusTimer();
     void    StopReportStatusTimer();
+
+    void StartAutoUpdate();
+    void CloseAutoUpdate();
 private:
     Ui::CloudStreamer *ui;
     /////////

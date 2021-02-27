@@ -48,6 +48,8 @@ static QString g_signKey = "CGW1uQ1StIRE0MBVrQg7wcYQjgC2wRlLmAQ1ZofF8S2XKWMv0ZS5
 static QString g_wsServerKey = "ND857fxx*3";
 static int g_reportGameStatusInteral = 8000;  //per ms
 const QString g_gstLaunchName = "gst-launch-1.0.exe";
+
+const QString g_autoUpdateScript= "/updater/interface.bat";
 //推流和键盘默认配置文件在 streamConfig.ini文件中
 //////云游戏默认配置文件在   cloudGameConfig.ini文件中
 /// ////////////////
@@ -950,6 +952,8 @@ CloudStreamer::CloudStreamer(QWidget *parent) :
     //////////connect some signal to slot
     connect(this , SIGNAL(ChangeCloudStreamerStatue(QString)) , this , SLOT(on_changeCloudStreamerStatue(QString)));
     connect(this , SIGNAL(InputLog(QString, QString)) , this , SLOT(on_inputLog(QString, QString)));
+    ///////
+    StartAutoUpdate();
 }
 
 
@@ -977,6 +981,7 @@ CloudStreamer::~CloudStreamer()
     StopWorkThread(m_stopGameThread);
     StopWorkThread(m_signInThread);
     disconnect(this , SIGNAL(InputLog(QString, QString)) , this , SLOT(on_inputLog(QString, QString)));
+    CloseAutoUpdate();
     delete ui;
 }
 
@@ -1776,8 +1781,8 @@ QString  WSServiceTransferSignString(QString &deviceNo){
         fread(ar,1,size,file);//每次读一个，共读size次
         ar[size] = '\0';
         deviceNoStr = ar;
-        fclose(file);
         free(ar);
+        fclose(file);
     }
     deviceNo = deviceNoStr;
     data["deviceNo"] = deviceNoStr.toLocal8Bit().data();
@@ -1940,6 +1945,32 @@ void    CloudStreamer::StopReportStatusTimer(){
 //        m_gameStatusTimer->stop();
 //        m_gameStatusTimer->deleteLater();
 //    }
+}
+
+void CloudStreamer::StartAutoUpdate(){
+    return;
+    QString updateScript = "";
+    QString executePath = QCoreApplication::applicationDirPath();
+    if(executePath.isEmpty()){
+        addLogToEdit(UI_ERROR , "executePath should be empty!");
+        return;
+    }
+    updateScript = executePath + g_autoUpdateScript;
+    QString tempStr = "\"start\"";
+    StartGame(updateScript.toLocal8Bit().data() , tempStr.toLocal8Bit().data());
+}
+
+void CloudStreamer::CloseAutoUpdate(){
+    return;
+    QString updateScript = "";
+    QString executePath = QCoreApplication::applicationDirPath();
+    if(executePath.isEmpty()){
+        addLogToEdit(UI_ERROR , "executePath should be empty!");
+        return;
+    }
+    updateScript = executePath + g_autoUpdateScript;
+    QString tempStr = "\"stop\"";
+    StartGame(updateScript.toLocal8Bit().data() , tempStr.toLocal8Bit().data());
 }
 
 void CloudStreamer::RecordSignalCallBack(QString flagStr , QString logStr){
