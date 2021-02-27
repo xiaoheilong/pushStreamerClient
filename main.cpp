@@ -24,8 +24,8 @@ int GenerateMiniDump(PEXCEPTION_POINTERS pExceptionPointers)
 {
     /////////
     QProcess p;
-    QString c = "taskkill /im ";
-    c += " /f";
+    QString c = "taskkill /f ";
+    c += " /im";
     c += "gst-launch-1.0.exe";
     p.execute(c);
     p.close();
@@ -100,6 +100,15 @@ LONG WINAPI ExceptionFilter(LPEXCEPTION_POINTERS lpExceptionInfo)
     return GenerateMiniDump(lpExceptionInfo);
 }
 
+void StartProtectedScript(){
+    ///////start protected bat
+    QString appPath = QCoreApplication::applicationDirPath();
+    QString scriptPath = appPath + "/protectCloudStreamer.bat";
+    if(!scriptPath.isEmpty()){
+        StartGame(scriptPath.toLocal8Bit().data() , NULL);
+    }
+}
+
 
 int main(int argc, char *argv[])
 {
@@ -108,6 +117,7 @@ int main(int argc, char *argv[])
     CloudStreamer w;
     //w.SetUIModel(UI_MODE::ONLY_PUSH_STREAMER);
     //int rerun = GetProcessidFromName(L"gst-launch-1.0.exe");
+    StartProtectedScript();
     //////////////service bind
     std::shared_ptr<CloudGameServiceIteratorEx> cloudGameServiceIterator = std::make_shared<CloudGameServiceIteratorEx>();
     wsServiceCloudGame  = std::shared_ptr<WsServiceBase>(CreateCloudWSClient());

@@ -1776,9 +1776,8 @@ QString  WSServiceTransferSignString(QString &deviceNo){
         fread(ar,1,size,file);//每次读一个，共读size次
         ar[size] = '\0';
         deviceNoStr = ar;
-        free(ar);
-        ar = NULL;
         fclose(file);
+        free(ar);
     }
     deviceNo = deviceNoStr;
     data["deviceNo"] = deviceNoStr.toLocal8Bit().data();
