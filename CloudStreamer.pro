@@ -37,7 +37,7 @@ INCLUDEPATH += $$PWD/./cloudGame/include
 #应用图标
 #RC_ICONS += icon.ico
 #版本号
-VERSION = 1.0.0.5
+VERSION = 1.0.0.6
 #中文
 RC_LANG = 0x0004
 # 公司名
