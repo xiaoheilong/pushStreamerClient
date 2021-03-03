@@ -13,6 +13,7 @@ namespace RecordGameInfoSpace{
         void RecordInfo(QString startGameParame , QString gameId, int gameStatus);
         void RecordInfo(int gameStatus);
         void RecordInfo(QString gameId,int gameStatus);
+        void RecordInfo(QString startGameParame);
         QString GetGameInfo();
         int GetGameStatus();
         QString GetGameId();

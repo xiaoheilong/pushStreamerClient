@@ -31,6 +31,17 @@ void RecordGameInfo::RecordInfo(QString startGameParame , QString gameId, int ga
     }
 }
 
+void RecordGameInfo::RecordInfo(QString startGameParame){
+    DealIniFile  streamConfig;
+    QString executePath = QCoreApplication::applicationDirPath();
+    ///路径是否合法
+    if(!executePath.isEmpty()){
+        if(0 == streamConfig.OpenFile(executePath + g_pushStreamerRunningStatus)){
+            streamConfig.SetValue(g_iniTopic,g_startGameParame ,startGameParame);
+        }
+    }
+}
+
 void RecordGameInfo::RecordInfo(int gameStatus){
     DealIniFile  streamConfig;
     QString executePath = QCoreApplication::applicationDirPath();

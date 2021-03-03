@@ -6,6 +6,7 @@
 #include  "keyvaluetransformt.h"
 #include  "websocketConnection.h"
 #include "websocketConnection.h"
+#include "json/json.h"
 using namespace CloudGameServiceIteratorSpace;
 #include <QMainWindow>
 #include <QString>
@@ -64,6 +65,11 @@ private:
 
     void StartReconnectThread();
     void StopReconnectThread();
+
+    bool IsLeftKeyboardNumberLetter(int & keyValue);
+    void DealTheFullKeyboardModel(Json::Value  & root);//root is the pointer of Json::Value , Do it first, maybe optimize in future
+    void DealTheNormalKeyboardModel(Json::Value  &root);
+    void DealTheJoystick(Json::Value  &root);
 private:
     bool m_threadFlag;
     QString m_wsUrl ;
@@ -74,6 +80,9 @@ protected:
     QTimer *m_keyPingTimer;
     QThread   * m_keyPingThread;
     std::shared_ptr<std::thread>m_reconnectThread;
+    std::shared_ptr<DealIniFile>  m_iniParse1;
+    std::shared_ptr<DealIniFile>  m_iniParse2;
+    bool m_isUpperKey;
 };
 
 enum UI_MODE{
@@ -83,6 +92,11 @@ enum UI_MODE{
 };
 
 QString  WSServiceTransferSignStringEx(QString deviceNo, QString sessionId , QString gameId , QString gamePath);
+
+enum StartGameModel{
+    NORMAL_MODEL = 0,
+    ONLY_PUSHSTREAMR
+};
 
 class CloudStreamer : public QMainWindow ,  public std::enable_shared_from_this<CloudStreamer>
 {
@@ -140,12 +154,14 @@ private:
 
     void ConnectCallback(QString url, QString data);   // url goal ws server  connect callback  data is some params
     void DisconnectCallback(QString url, QString data); //url goal ws server disconnect callback data is some params
-    void StartGameCallback(QString data); // gamePath is  absolutely path
+    void StartGameCallback(QString data , StartGameModel model = NORMAL_MODEL); // gamePath is  absolutely path
     void StopGameCallback(QString data);// gamePath is  absolutely path
     void DownloadCallback(QString downloadUrl , QString savePath);//downloadUrl is file url of goal file , savePath is  absolutely path
     void PushStreamCallback(QString streamParams);  //streamParams is format like json string
     void CloseStreamCallback(QString streamParams);//streamParams is format like json string
     void SignInCloudGameCallback(QString paramData);
+    void ChangeResolutionCallback(QString paramData);
+    QString ModifiyStartParams(QString framerate, QString bitrate,QString deadline);
     void SetUIModel(UI_MODE model);
     void SignInWsService();
     void ActiveReportGameStatus();
@@ -155,6 +171,8 @@ private:
     void StopProtectGstLaunch();
 
     void RecoveryGame();
+
+    void QuitForce(bool value);
 public:
     void  addLogToEdit(QString flagStr , QString logStr);//添加一条日志到日志
 protected:
@@ -194,10 +212,12 @@ private:
     std::shared_ptr<std::thread> m_startGameThread;
     std::shared_ptr<std::thread> m_stopGameThread;
     std::shared_ptr<std::thread> m_signInThread;
+    std::shared_ptr<std::thread> m_changeResolution;
     QThread * m_gameStatusThread;
     std::shared_ptr<std::thread>m_gstlaunchProtectThead;
     bool m_gstlaunchProtectTheadFlag;
     std::function<void()> m_pushStreamerFunc;
     std::function<void(int)> m_startGameFunc;
+    std::mutex m_gstLaunchMutex;
 };
 #endif // CLOUDSTREAMER_H
