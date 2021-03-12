@@ -9,6 +9,7 @@ const QString g_startGameParame = "startGameParame";
 const QString g_startGameStatus = "startGameStatus";
 const QString g_gameId="gameId";
 const QString g_iniTopic = "pushStreamerInfo";
+const QString g_isUpdate = "isUpdate";
 RecordGameInfo::RecordGameInfo()
 {
 
@@ -89,7 +90,7 @@ int RecordGameInfo::GetGameStatus(){
     return 0;
 }
 
-QString GetGameId(){
+QString RecordGameInfo::GetGameId(){
     DealIniFile  streamConfig;
     QString executePath = QCoreApplication::applicationDirPath();
     ///路径是否合法
@@ -99,6 +100,21 @@ QString GetGameId(){
         }
     }
     return "";
+}
+
+
+bool RecordGameInfo::GetIsUpdate(){
+    DealIniFile  streamConfig;
+    QString executePath = QCoreApplication::applicationDirPath();
+    ///路径是否合法
+    if(!executePath.isEmpty()){
+        if(0 == streamConfig.OpenFile(executePath + g_pushStreamerRunningStatus)){
+            if(0 == streamConfig.GetValue(g_iniTopic , g_isUpdate).toString().compare("1")){
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 }

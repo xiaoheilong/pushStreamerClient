@@ -138,10 +138,10 @@ int  WsAppConnection::Send(std::string msg , OpcodeValue opcode1){
             if(!data.empty())
             {
                 try{
-                    c.send(hdl_ ,msg , opcode1);
-                    c.get_alog().write(websocketpp::log::alevel::app, "send msg: " + msg);
+                    c.send(hdl_ ,data , opcode1);
+                    c.get_alog().write(websocketpp::log::alevel::app, "send msg: " + data);
                 }catch(websocketpp::exception const & e){
-                     c.get_alog().write(websocketpp::log::alevel::fail, "send msg failure: " + msg);
+                     c.get_alog().write(websocketpp::log::alevel::fail, "send msg failure: " + data);
                 }
             }
             return 0;

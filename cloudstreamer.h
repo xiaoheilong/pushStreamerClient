@@ -21,6 +21,8 @@ using namespace DealIniFileSpace;
 using namespace KeyValueTransformtNamespace;
 using namespace WebSocketNamsSpace;
 //typename KeyValueTransformtNamespace::KeyValueTransformt  KeyValueTransformt;
+bool isProcessRunning(QString processName);
+std::wstring s2ws(const std::string &s);
 class CloudStreamer;
 class KeyBoardThread: public QThread, public OutterInterfaceConnection
 {
@@ -173,6 +175,7 @@ private:
     void RecoveryGame();
 
     void QuitForce(bool value);
+    void KillGameByName(QString gameName);
 public:
     void  addLogToEdit(QString flagStr , QString logStr);//添加一条日志到日志
 protected:
@@ -188,6 +191,8 @@ protected:
 
     void StartAutoUpdate();
     void CloseAutoUpdate();
+
+    bool isUpdate();
 private:
     Ui::CloudStreamer *ui;
     /////////

@@ -17,6 +17,7 @@ namespace RecordGameInfoSpace{
         QString GetGameInfo();
         int GetGameStatus();
         QString GetGameId();
+        bool GetIsUpdate();
 
     };
 }

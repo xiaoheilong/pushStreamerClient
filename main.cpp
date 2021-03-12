@@ -15,6 +15,7 @@
 #include <minidumpapiset.h>
 #include <iostream>
 #include <QAbstractButton>
+#include <tlhelp32.h>
 typedef CloudGameServiceIteratorSpace::CloudGameServiceIterator  CloudGameServiceIteratorEx;
 using namespace WSServiceSpace;
 
@@ -101,6 +102,51 @@ LONG WINAPI ExceptionFilter(LPEXCEPTION_POINTERS lpExceptionInfo)
 }
 
 
+void StartProtectedScript(){
+    ///////start protected bat
+    QString appPath = QCoreApplication::applicationDirPath();
+    QString scriptPath = appPath + "/protectCloudStreamer.bat";
+    if(!scriptPath.isEmpty()){
+        StartGame(scriptPath.toLocal8Bit().data() , NULL/*,SW_HIDE*/);
+    }
+}
+
+
+int HasAnotherInstance(QString processName)
+{
+    int count = 0;
+    PROCESSENTRY32 pe;
+        DWORD id = 0;
+        HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+        pe.dwSize = sizeof(PROCESSENTRY32);
+        if (!Process32First(hSnapshot, &pe))
+            //LogEx(UI_ERROR , "GetProcessidFromName Process32First is failure!");
+            return false;
+        while (1)
+        {
+            if(count >= 2){
+                break;
+            }
+            pe.dwSize = sizeof(PROCESSENTRY32);
+            if (Process32Next(hSnapshot, &pe) == FALSE) {
+                //LogEx(g_UI_ERROR, "GetProcessidFromName  result is false!");
+                break;
+            }
+            std::string path1 = processName.toStdString();
+            std::wstring path = s2ws(path1);
+            if (lstrcmp(pe.szExeFile, path.c_str()) == 0)
+            {
+                ++count;
+                //id = pe.th32ProcessID;
+                //LogEx(g_UI_ERROR, "GetProcessidFromName  result is true!");
+                //break;
+            }
+        }
+        CloseHandle(hSnapshot);
+        return count >= 2 ? true:false;
+}
+
+
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
@@ -108,6 +154,11 @@ int main(int argc, char *argv[])
     CloudStreamer w;
     //w.SetUIModel(UI_MODE::ONLY_PUSH_STREAMER);
     //int rerun = GetProcessidFromName(L"gst-launch-1.0.exe");
+    if(HasAnotherInstance("CloudStreamer.exe")){
+        MessageBoxA(NULL, "CloudStreamer.exe is Already running!" , "error" ,MB_OK);
+        return -1;
+    }
+    StartProtectedScript();
     //////////////service bind
     std::shared_ptr<CloudGameServiceIteratorEx> cloudGameServiceIterator = std::make_shared<CloudGameServiceIteratorEx>();
     wsServiceCloudGame  = std::shared_ptr<WsServiceBase>(CreateCloudWSClient());
