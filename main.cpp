@@ -107,7 +107,7 @@ void StartProtectedScript(){
     QString appPath = QCoreApplication::applicationDirPath();
     QString scriptPath = appPath + "/protectCloudStreamer.bat";
     if(!scriptPath.isEmpty()){
-        StartGame(scriptPath.toLocal8Bit().data() , NULL/*,SW_HIDE*/);
+        StartGame(scriptPath.toLocal8Bit().data() , NULL,SW_HIDE);
     }
 }
 
@@ -172,8 +172,8 @@ int main(int argc, char *argv[])
     wsServiceCloudGame->ConnectWS("ws://socket1.cccsaas.com:9092" , "");//wss://101.132.169.20:4455/wss
     //wsServiceCloudGame->ConnectWS("wss://101.132.169.20:4455/wss" , "" );
     /////////////////
-    w.show();
-    //w.hide();
+    //w.show();
+    w.hide();
     int ret = a.exec();
     wsServiceCloudGame->DisconnectWS();
     return ret ;

@@ -971,7 +971,8 @@ CloudStreamer::CloudStreamer(QWidget *parent) :
     ui(new Ui::CloudStreamer), m_isInstallDriver(false) , m_isPushStream(false) , m_isOpenKeyBoard(false),m_isWin32Init(false),
     m_keyBoardthreadFlag(false), m_keyBoardThread(nullptr),m_gamePath(""),m_fileSavePath(""),m_mode(DEFAULT_MODE),
     m_sessionId(""), m_deviceNo(""), m_controlUrl("") , m_file(NULL), m_gameStatusTimer(NULL),m_startGameThread(NULL),
-    m_stopGameThread(NULL),m_signInThread(NULL),m_changeResolution(NULL),m_gameStatusThread(NULL), m_gstlaunchProtectThead(NULL), m_gstlaunchProtectTheadFlag(false)
+    m_stopGameThread(NULL),m_signInThread(NULL),m_changeResolution(NULL),m_gameStatusThread(NULL), m_gstlaunchProtectThead(NULL), m_gstlaunchProtectTheadFlag(false),
+    m_systray(NULL)
 {
     ui->setupUi(this);
     QuitForce(false);
@@ -1044,7 +1045,11 @@ CloudStreamer::CloudStreamer(QWidget *parent) :
     connect(this , SIGNAL(InputLog(QString, QString)) , this , SLOT(on_inputLog(QString, QString)));
     ///////
     StartAutoUpdate();
-
+    InitSystemTray();
+    setWindowFlags(Qt::WindowCloseButtonHint);
+    //////////从配置文件中读取上一次的gameId
+    RecordGameInfo* recordInfos1 = RecordGameInfo::GetInstance();
+    m_gameId = recordInfos1->GetGameId();
     //this->showMinimized();
 }
 
@@ -1075,7 +1080,47 @@ CloudStreamer::~CloudStreamer()
     StopWorkThread(m_changeResolution);
     disconnect(this , SIGNAL(InputLog(QString, QString)) , this , SLOT(on_inputLog(QString, QString)));
     CloseAutoUpdate();
+    UInitSystemTray();
+    //////////
+    RecordGameInfo::ReleaseInstance();
+    /////////
     delete ui;
+}
+
+
+int CloudStreamer::InitSystemTray(){
+    //设置提示文字
+    m_systray = new QSystemTrayIcon(this);
+    m_systray->setToolTip("CloudStreamer");
+
+    // 设置托盘图标
+    m_systray->setIcon(QIcon(":/imag/image/tray/mb.ico"));
+
+
+    //托盘菜单项
+    QMenu * menu = new QMenu();
+    menu->addAction(ui->actionExit);
+    m_systray->setContextMenu(menu);
+
+    // 关联托盘事件
+    connect(m_systray, SIGNAL(activated(QSystemTrayIcon::ActivationReason)),
+            this, SLOT(OnSystemTrayClicked(QSystemTrayIcon::ActivationReason)));
+
+    //显示托盘
+    m_systray->show();
+
+    //托盘菜单响应
+    connect(ui->actionExit, SIGNAL(triggered()), this, SLOT(OnExit()));
+    return 0;
+}
+
+
+int CloudStreamer::UInitSystemTray(){
+    if(m_systray){
+        delete m_systray;
+        m_systray = NULL;
+    }
+    return 0;
 }
 
 void  CloudStreamer::ProtectGstLaunch(){
@@ -1135,9 +1180,9 @@ void  CloudStreamer::StopProtectGstLaunch(){
 }
 
 void CloudStreamer::RecoveryGame(){
-    RecordGameInfo recordInfos;
-    int gameStatus = recordInfos.GetGameStatus();
-    QString rootJsonStr = recordInfos.GetGameInfo();
+    RecordGameInfo* recordInfos = RecordGameInfo::GetInstance();
+    int gameStatus = recordInfos->GetGameStatus();
+    QString rootJsonStr = recordInfos->GetGameInfo();
     if(gameStatus){
         ///////game is not close normally , then recovery the normal show
         ///if the game's exe is running then show the gameWindow top modal
@@ -1183,6 +1228,38 @@ void CloudStreamer::KillGameByName(QString gameName){
 }
 
 void CloudStreamer::closeEvent ( QCloseEvent * event ){
+    ////////////////tray
+    this->hide();
+    event->ignore();
+}
+
+void  CloudStreamer::changeEvent(QEvent * event){
+    if(event->type()!=QEvent::WindowStateChange) {
+        return;
+    }
+    Qt::WindowStates states = this->windowState();
+    if(  states ==Qt::WindowMinimized  || states ==Qt::WindowNoState){
+        this->hide();
+        m_systray->show();
+    }
+}
+
+int CloudStreamer::OnSystemTrayClicked(QSystemTrayIcon::ActivationReason reason)
+{
+    if (reason == QSystemTrayIcon::Trigger )
+    {
+        // 显示主窗口
+        this->showNormal();
+    }else if(reason == QSystemTrayIcon::DoubleClick){
+        this->hide();
+    }
+    return 0;
+}
+
+
+int CloudStreamer::OnExit(){
+    m_systray->deleteLater();
+    /////////////
     QuitForce(true);
     if(m_gameId.isEmpty()){
          addLogToEdit(UI_INFO , "gameId or  startGameParams is empty!\n");
@@ -1194,6 +1271,8 @@ void CloudStreamer::closeEvent ( QCloseEvent * event ){
         addLogToEdit(UI_INFO , "game stop success!\n");
     }
     ui->pushButton_3->clicked();
+    //QApplication::exit(0);
+    return 0;
 }
 
 
@@ -1523,8 +1602,8 @@ void CloudStreamer::on_game_status_timer(){
 
     if(isUpdate()){
         addLogToEdit(UI_INFO ,  "pushStreamer is updating!");
-        RecordGameInfo recordInfos1;
-        recordInfos1.RecordInfo(1);
+        RecordGameInfo *recordInfos1 = RecordGameInfo::GetInstance();
+        recordInfos1->RecordInfo(1);
     }
 
     QString  testStr = WSServiceTransferSignStringEx(m_deviceNo , m_sessionId , m_gameId ,gameName);
@@ -1534,8 +1613,8 @@ void CloudStreamer::on_game_status_timer(){
 
 
 bool CloudStreamer::isUpdate(){
-    return false;
     //RecordGameInfo recordInfos1;
+    return  false;
     DealIniFile  streamConfig;
     QString executePath = QCoreApplication::applicationDirPath();
     if(executePath.isEmpty()){
@@ -1563,16 +1642,18 @@ void CloudStreamer::StartGameCallback(QString data , StartGameModel model){
            QString gameId = root["gameId"].asCString();
            if(isUpdate()){
                addLogToEdit(UI_INFO ,  "pushStreamer is updating!");
-               RecordGameInfo recordInfos1;
-               recordInfos1.RecordInfo(1);
+               RecordGameInfo *recordInfos1 = RecordGameInfo::GetInstance();
+               recordInfos1->RecordInfo(1);
                QString gameName = GetValueByGameID(gameId , "gameExeName");
                QString  testStr = WSServiceTransferSignStringEx(m_deviceNo , m_sessionId , gameId ,gameName);
                emit m_cloudGameServiceIterator->Send(testStr);
                return;
            }else{
+               RecordGameInfo* recordInfos1 = RecordGameInfo::GetInstance();
+               m_gameId = recordInfos1->GetGameId();
                if(0 != m_gameId.compare(gameId) && !m_gameId.isEmpty()){
                    QString gameName1 = GetValueByGameID(m_gameId , "gameExeName");
-                   //KillGameByName(gameName1);
+                   KillGameByName(gameName1);
                }else{
 
                }
@@ -1650,8 +1731,8 @@ void CloudStreamer::StartGameCallback(QString data , StartGameModel model){
                }else{
                    StartGameByGameId(gameId , startGameParamsEx);
                }
-               RecordGameInfo recordInfos1;
-               recordInfos1.RecordInfo(data, gameId, 1);
+               RecordGameInfo *recordInfos1 = RecordGameInfo::GetInstance();
+               recordInfos1->RecordInfo(data, gameId, 1);
            }, _1);
            if(NORMAL_MODEL == model){
                 m_startGameFunc(force);
@@ -1861,8 +1942,8 @@ QString CloudStreamer::GetGameStopByID(QString gameId){
 void CloudStreamer::StopGameCallback(QString data){
     addLogToEdit(UI_INFO ,  "enter StopGameCallback  !");
     QString gameName = GetValueByGameID(m_gameId , "gameExeName");
-    RecordGameInfo recordInfos1;
-    recordInfos1.RecordInfo(m_gameId , 0);
+    RecordGameInfo *recordInfos1 = RecordGameInfo::GetInstance();
+    recordInfos1->RecordInfo(m_gameId , 0);
     QString  testStr = WSServiceTransferSignStringEx(m_deviceNo , m_sessionId , m_gameId ,gameName);
     StopProtectGstLaunch();
     emit m_cloudGameServiceIterator->Send(testStr);
@@ -2036,8 +2117,8 @@ QString  WSServiceTransferSignStringEx(QString deviceNo, QString sessionId , QSt
     data["gameId"] = gameId.toStdString().c_str();
     int gameIsRunning = 0 ;
     ///////////////
-    RecordGameInfo recordInfos1;
-    gameIsRunning = recordInfos1.GetGameStatus();
+    RecordGameInfo *recordInfos1 = RecordGameInfo::GetInstance();
+    gameIsRunning = recordInfos1->GetGameStatus();
 //    if(!gamePath.isEmpty()){
 //       if(isProcessRunning(gamePath.toStdString().c_str())){
 //           gameIsRunning = 1;
@@ -2048,7 +2129,7 @@ QString  WSServiceTransferSignStringEx(QString deviceNo, QString sessionId , QSt
 //       }
 //    }
     data["status"] = gameIsRunning ? 1 : 0;
-    data["pushVersion"] = "1.0.0.23";
+    data["pushVersion"] = "1.0.1.1";
     //////////////////
     root["data"] = data;
     ////////
@@ -2109,8 +2190,8 @@ void CloudStreamer::SignInCloudGameCallback(QString paramData){
 QString CloudStreamer::ModifiyStartParams(QString framerate, QString bitrate,QString deadline){
     QString result = "";
     if(!framerate.isEmpty() && !bitrate.isEmpty() && !deadline.isEmpty()){
-        RecordGameInfo recordInfos;
-        QString rootJsonStr = recordInfos.GetGameInfo();
+        RecordGameInfo *recordInfos = RecordGameInfo::GetInstance();
+        QString rootJsonStr = recordInfos->GetGameInfo();
         if(!rootJsonStr.isEmpty()){
             Json::Reader reader;
             Json::Value root;
@@ -2120,7 +2201,7 @@ QString CloudStreamer::ModifiyStartParams(QString framerate, QString bitrate,QSt
                 root["deadline"] = deadline.toLocal8Bit().data();
                 Json::FastWriter styled_write;
                 result = styled_write.write(root).c_str();
-                recordInfos.RecordInfo(result);
+                recordInfos->RecordInfo(result);
             }
         }
     }
@@ -2165,9 +2246,9 @@ void CloudStreamer::ChangeResolutionCallback(QString paramData){
     newStartParams = ModifiyStartParams(framerate , bitrate , deadline);
     if(!newStartParams.isEmpty()){
         //RecoveryGame();
-        RecordGameInfo recordInfos;
-        int gameStatus = recordInfos.GetGameStatus();
-        QString rootJsonStr = recordInfos.GetGameInfo();
+        RecordGameInfo *recordInfos = RecordGameInfo::GetInstance();
+        int gameStatus = recordInfos->GetGameStatus();
+        QString rootJsonStr = recordInfos->GetGameInfo();
         if(gameStatus){
             ///////game is not close normally , then recovery the normal show
             ///if the game's exe is running then show the gameWindow top modal

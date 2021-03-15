@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/imag">
+        <file>image/tray/mb.ico</file>
+    </qresource>
+</RCC>

@@ -35,9 +35,9 @@ INCLUDEPATH += $$PWD/./cloudGame/include
 
 ////////推流版本号控制
 #应用图标
-#RC_ICONS += icon.ico
+RC_ICONS += image/cloudStreamer.ico
 #版本号
-VERSION = 1.0.0.23
+VERSION = 1.0.1.1
 #中文
 RC_LANG = 0x0004
 # 公司名
@@ -163,3 +163,6 @@ DISTFILES += \
     cloudGame/include/lib_json/sconsc4ript
 
 msvc:QMAKE_CXXFLAGS += -execution-charset:utf-8
+
+RESOURCES += \
+    image.qrc

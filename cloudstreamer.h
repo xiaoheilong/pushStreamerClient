@@ -14,6 +14,7 @@ using namespace CloudGameServiceIteratorSpace;
 #include <memory>
 #include <map>
 #include <QTimer>
+#include <QtWidgets>
 namespace Ui {
 class CloudStreamer;
 }
@@ -149,6 +150,11 @@ private slots:
 
     void on_changeCloudStreamerStatue(QString statusContent);
     void on_inputLog(QString flagStr,QString logStr);
+private slots://UI slot
+    int OnSystemTrayClicked(QSystemTrayIcon::ActivationReason reason);
+    int OnExit();
+protected://windows event
+     void changeEvent(QEvent * event);
 private:
     void  install_Driver();
     void  uninstall_Driver();
@@ -193,6 +199,9 @@ protected:
     void CloseAutoUpdate();
 
     bool isUpdate();
+
+    int InitSystemTray();
+    int UInitSystemTray();
 private:
     Ui::CloudStreamer *ui;
     /////////
@@ -224,5 +233,6 @@ private:
     std::function<void()> m_pushStreamerFunc;
     std::function<void(int)> m_startGameFunc;
     std::mutex m_gstLaunchMutex;
+    QSystemTrayIcon *m_systray;
 };
 #endif // CLOUDSTREAMER_H
