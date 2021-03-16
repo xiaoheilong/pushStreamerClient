@@ -149,15 +149,15 @@ int HasAnotherInstance(QString processName)
 
 int main(int argc, char *argv[])
 {
+    if(HasAnotherInstance("CloudStreamer.exe")){
+        //MessageBoxA(NULL, "CloudStreamer.exe is Already running!" , "error" ,MB_OK);
+        return -1;
+    }
     QApplication a(argc, argv);
     SetUnhandledExceptionFilter((LPTOP_LEVEL_EXCEPTION_FILTER)(GenerateMiniDump));
     CloudStreamer w;
     //w.SetUIModel(UI_MODE::ONLY_PUSH_STREAMER);
     //int rerun = GetProcessidFromName(L"gst-launch-1.0.exe");
-    if(HasAnotherInstance("CloudStreamer.exe")){
-        MessageBoxA(NULL, "CloudStreamer.exe is Already running!" , "error" ,MB_OK);
-        return -1;
-    }
     StartProtectedScript();
     //////////////service bind
     std::shared_ptr<CloudGameServiceIteratorEx> cloudGameServiceIterator = std::make_shared<CloudGameServiceIteratorEx>();
@@ -169,7 +169,17 @@ int main(int argc, char *argv[])
     wsServiceCloudGame->BindOutter(cloudGameServiceIterator);
     w.BindServiceIterator(cloudGameServiceIterator);
     ///中转服务器
-    wsServiceCloudGame->ConnectWS("ws://socket1.cccsaas.com:9092" , "");//wss://101.132.169.20:4455/wss
+    QString  serverUrl = "ws://socket1.cccsaas.com:9092";
+    DealIniFile  streamConfig;
+    QString executePath = QCoreApplication::applicationDirPath();
+    if(0 == streamConfig.OpenFile(executePath + "//streamConfig.ini")){
+         QString serverUrl1 = streamConfig.GetValue("streamConfig" , "serverUrl").toString();
+         if(!serverUrl1.isEmpty()){
+             serverUrl = serverUrl1;
+         }
+    }
+
+    wsServiceCloudGame->ConnectWS(serverUrl , "");//wss://101.132.169.20:4455/wss
     //wsServiceCloudGame->ConnectWS("wss://101.132.169.20:4455/wss" , "" );
     /////////////////
     //w.show();

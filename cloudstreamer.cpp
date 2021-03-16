@@ -2129,7 +2129,7 @@ QString  WSServiceTransferSignStringEx(QString deviceNo, QString sessionId , QSt
 //       }
 //    }
     data["status"] = gameIsRunning ? 1 : 0;
-    data["pushVersion"] = "1.0.1.1";
+    data["pushVersion"] = "1.0.1.3";
     //////////////////
     root["data"] = data;
     ////////
