@@ -169,6 +169,8 @@ private:
     void CloseStreamCallback(QString streamParams);//streamParams is format like json string
     void SignInCloudGameCallback(QString paramData);
     void ChangeResolutionCallback(QString paramData);
+    void MessageFeedBack(QString msgType ,  QString resultCode , QString resultMsg);
+
     QString ModifiyStartParams(QString framerate, QString bitrate,QString deadline);
     void SetUIModel(UI_MODE model);
     void SignInWsService();
@@ -202,6 +204,8 @@ protected:
 
     int InitSystemTray();
     int UInitSystemTray();
+
+    void ExecuteOutterScript(QString  path, const QStringList &params);
 private:
     Ui::CloudStreamer *ui;
     /////////

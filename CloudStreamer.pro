@@ -37,7 +37,7 @@ INCLUDEPATH += $$PWD/./cloudGame/include
 #应用图标
 RC_ICONS += image/cloudStreamer.ico
 #版本号
-VERSION = 1.0.1.3
+VERSION = 1.0.1.6
 #中文
 RC_LANG = 0x0004
 # 公司名
@@ -83,7 +83,9 @@ win32:CONFIG(debug, debug|release):{
 
   }
 }
-
+///////
+QMAKE_LFLAGS += /MANIFESTUAC:\"level=\'requireAdministrator\' uiAccess=\'false\'\"
+////////
 
 SOURCES += \
         cloudGame/include/lib_json/json_reader.cpp \
@@ -101,7 +103,8 @@ SOURCES += \
     gamecommandexetransformt.cpp \
     consumerkeyboardvalue.cpp \
     websocketconnection.cpp \
-    recordgameinfo.cpp
+    recordgameinfo.cpp \
+    gamedealexeception.cpp
 
 HEADERS += \
         cloudGame/include/json/autolink.h \
@@ -128,7 +131,8 @@ HEADERS += \
     gamecommandexetransformt.h \
     consumerkeyboardvalue.h \
     websocketConnection.h \
-    recordgameinfo.h
+    recordgameinfo.h \
+    gamedealexeception.h
 
 FORMS += \
         cloudstreamer.ui \
