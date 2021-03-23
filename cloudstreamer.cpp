@@ -1715,34 +1715,7 @@ void CloudStreamer::StartGameCallback(QString data , StartGameModel model){
                     //return ;
                 }
                 /////////
-                ////////loginParam port replace to deviceNo
-                //m_startGameFunc = std::bind([gameId , startGameParams,this ,  data](int forceValue){
-                    QString startGameParamsEx = startGameParams;
-                    if(gameId.isEmpty()  || startGameParamsEx.isEmpty()){
-                        addLogToEdit(UI_INFO , "gameId or  startGameParamsEx is empty!\n");
-                    }else{
-                        if(0 == startGameParamsEx.compare("null"));{
-                            startGameParamsEx = "";
-                            ActiveReportGameStatus();
-                        }
-                    }
-                    bool gameIsRunning = false;
-                    gameIsRunning = GameIsAreadlyRunning(gameId);
-                    if(gameIsRunning){
-                        if(/*forceValue*/force > 0 ){
-                            KillAreadlyRunningGame(gameId);
-                            StartGameByGameId(gameId , startGameParamsEx );
-                        }
-                    }else{
-                        StartGameByGameId(gameId , startGameParamsEx);
-                    }
-                    RecordGameInfo *recordInfos1 = RecordGameInfo::GetInstance();
-                    recordInfos1->RecordInfo(data, gameId, 1);
-               // }, _1);
-                //if(NORMAL_MODEL == model){
-                //    m_startGameFunc(force);
-                //}
-                /////////////
+
                 QString domain = serverUrl;
                 QString pushUrl = "https://";
                 serverUrl = pushUrl + serverUrl;
@@ -1759,7 +1732,7 @@ void CloudStreamer::StartGameCallback(QString data , StartGameModel model){
                         throw GameDealExeception("closepush failure!" , -3);
                         //return;
                     }
-                    addLogToEdit(UI_INFO , QString("push stream  params serverUrl=%1  domain:%2  roomId=%3").arg(serverUrl).arg(domain).arg(roomId));
+//                    addLogToEdit(UI_INFO , QString("push stream  params serverUrl=%1  domain:%2  roomId=%3").arg(serverUrl).arg(domain).arg(roomId));
                     //ui->lineEdit_3->setText(roomId);
                     //ui->lineEdit->setText(serverUrl);
                     ret = push(roomId.toLocal8Bit().data(),serverUrl.toLocal8Bit().data(), domain.toLocal8Bit().data(),framerate.toInt() ,
@@ -1774,6 +1747,35 @@ void CloudStreamer::StartGameCallback(QString data , StartGameModel model){
                     addLogToEdit(UI_INFO , "push stream success!\n");
                 });
                 m_pushStreamerFunc();
+                /////////////
+                ////////loginParam port replace to deviceNo
+                m_startGameFunc = std::bind([gameId , startGameParams,this ,  data](int forceValue){
+                    QString startGameParamsEx = startGameParams;
+                    if(gameId.isEmpty()  || startGameParamsEx.isEmpty()){
+                        addLogToEdit(UI_INFO , "gameId or  startGameParamsEx is empty!\n");
+                    }else{
+                        if(0 == startGameParamsEx.compare("null"));{
+                            startGameParamsEx = "";
+                            ActiveReportGameStatus();
+                        }
+                    }
+                    bool gameIsRunning = false;
+                    gameIsRunning = GameIsAreadlyRunning(gameId);
+                    if(gameIsRunning){
+                        if(forceValue/*force */> 0 ){
+                            KillAreadlyRunningGame(gameId);
+                            StartGameByGameId(gameId , startGameParamsEx );
+                        }
+                    }else{
+                        StartGameByGameId(gameId , startGameParamsEx);
+                    }
+                    RecordGameInfo *recordInfos1 = RecordGameInfo::GetInstance();
+                    recordInfos1->RecordInfo(data, gameId, 1);
+                }, _1);
+                if(NORMAL_MODEL == model){
+                    m_startGameFunc(force);
+                }
+                /////////////
                 /////////
                 if(NORMAL_MODEL == model){
                     if(m_keyBoardThread.get()){
@@ -1809,6 +1811,7 @@ void CloudStreamer::StartGameCallback(QString data , StartGameModel model){
     }catch(GameDealExeception  e){
         ////////////exeception deal
         MessageFeedBack("StartGame" , e.GetErrorCode().c_str() , e.what());
+
     }
 }
 
@@ -1858,8 +1861,8 @@ void CloudStreamer::on_changeCloudStreamerStatue(QString statusContent){
              bool ret = false;
              QStringList paramList= params.split(";");
              if(!startGameParams.isEmpty()){
-                //ret = StartGame(str11.toLocal8Bit().data()  ,params.toLocal8Bit().data(),SW_HIDE);
-               ExecuteOutterScript(str11.toLocal8Bit().data()  ,paramList);
+               // ret = StartGame(str11.toLocal8Bit().data()  ,params.toLocal8Bit().data(),SW_HIDE);
+                ExecuteOutterScript(str11.toLocal8Bit().data()  ,paramList);
              }else{
                  //ret = StartGame(str11.toLocal8Bit().data()  ,params.toLocal8Bit().data(),SW_HIDE);
                 ExecuteOutterScript(str11.toLocal8Bit().data() , paramList);
@@ -1880,7 +1883,6 @@ void CloudStreamer::on_changeCloudStreamerStatue(QString statusContent){
  void CloudStreamer::ExecuteOutterScript(QString  path, const QStringList &params){
      if(!path.isEmpty()){
          QProcess  process;
-         //process.setReadChannelMode(ForwardedChannels);
          if(params.size() > 0){
             process.start(path ,params);
          }else{
@@ -2132,7 +2134,7 @@ QString  WSServiceTransferSignStringEx(QString deviceNo, QString sessionId , QSt
     RecordGameInfo *recordInfos1 = RecordGameInfo::GetInstance();
     gameIsRunning = recordInfos1->GetGameStatus();
     data["status"] = gameIsRunning ? 1 : 0;
-    data["pushVersion"] = "1.0.1.6";
+    data["pushVersion"] = "1.0.1.7";
     //////////////////
     root["data"] = data;
     ////////

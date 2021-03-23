@@ -37,7 +37,7 @@ INCLUDEPATH += $$PWD/./cloudGame/include
 #应用图标
 RC_ICONS += image/cloudStreamer.ico
 #版本号
-VERSION = 1.0.1.6
+VERSION = 1.0.1.7
 #中文
 RC_LANG = 0x0004
 # 公司名
