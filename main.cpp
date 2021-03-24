@@ -2,6 +2,7 @@
 #include "wsservice.h"
 #include "json/json.h"
 #include "CloudGame.h"
+#include "globaltools.h"
 #include <QApplication>
 #include <QTextCodec>
 #include <QMessageBox>

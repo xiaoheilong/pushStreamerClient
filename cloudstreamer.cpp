@@ -1,5 +1,6 @@
 ﻿#include "cloudstreamer.h"
 #include "ui_cloudstreamer.h"
+#include "globaltools.h"
 ////////
 /// \brief CloudStreamer::CloudStreamer
 #pragma comment( lib, "ws2_32" )
@@ -1052,6 +1053,7 @@ CloudStreamer::CloudStreamer(QWidget *parent) :
     RecordGameInfo* recordInfos1 = RecordGameInfo::GetInstance();
     m_gameId = recordInfos1->GetGameId();
     //this->showMinimized();
+    LOG_INFO(QString("CloudStreamer::CloudStreamer"));
 }
 
 
@@ -1086,6 +1088,7 @@ CloudStreamer::~CloudStreamer()
     RecordGameInfo::ReleaseInstance();
     /////////
     //fclose(m_file);
+    LOG_INFO(QString("CloudStreamer::~CloudStreamer"));
     delete ui;
 }
 
@@ -1374,7 +1377,9 @@ void CloudStreamer::uninstall_Driver()
          str +=":";
          str += logStr;
          str += "\n";
-         ui->textEdit_2->append(str);
+         LOG_INFO(QString("%1").arg(str));
+         //ui->textEdit_2->append(str);
+
 //         if(m_file){
 //             fwrite(str.toLocal8Bit().data(), str.size(), 1 , m_file);
 //         }

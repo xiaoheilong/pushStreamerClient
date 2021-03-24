@@ -1,5 +1,5 @@
 ﻿#include "websocketConnection.h"
-
+#include "globaltools.h"
 namespace WebSocketNamsSpace{
 WsAppConnection::WsAppConnection():thread_(NULL) , m_uri("") , m_isConnected(false), m_outter(NULL){
     hdl_.reset();
@@ -11,6 +11,7 @@ WsAppConnection::WsAppConnection():thread_(NULL) , m_uri("") , m_isConnected(fal
     c.init_asio();
     c.start_perpetual();
     thread_ = websocketpp::lib::make_shared<websocketpp::lib::thread>(&client::run, &c);
+    LOG_INFO(QString("WsAppConnection::WsAppConnection()"));
 }
 
 WsAppConnection::~WsAppConnection(){
@@ -23,9 +24,9 @@ WsAppConnection::~WsAppConnection(){
             thread_.reset();
         }
     }catch(websocketpp::exception const & e){
-        int a =0;
-        a++;
+        LOG_INFO(QString("WsAppConnection::~WsAppConnection release occur failure!"));
     }
+    LOG_INFO(QString("WsAppConnection::~WsAppConnection()"));
 }
 
 
@@ -39,17 +40,17 @@ void WsAppConnection::on_open(websocketpp::connection_hdl hdl)
     {
         m_outter->ConnectedCallback(msg , 0);
     }
+    LOG_INFO(QString(" %1 on_open: %2").arg(m_uri.c_str()).arg(msg.c_str()));
 }
 
 void WsAppConnection::on_message(websocketpp::connection_hdl hdl, message_ptr msg)
 {
-    std::cout << "on_message called with hdl: " << hdl.lock().get()
-        << " and message: " << msg->get_payload()
-        << std::endl;
+    LOG_INFO(QString("on_message called with and message: %1  from %2!").arg( msg->get_payload().c_str()).arg(m_uri.c_str()));
     websocketpp::lib::error_code ec;
     if (ec)
     {
-        std::cout << "Echo failed because " << ec.message() << std::endl;
+        //std::cout << "Echo failed because " << ec.message() << std::endl;
+        LOG_INFO(QString("Echo failed because %1").arg(ec.message().c_str()));
     }
 
     if(m_outter)
@@ -61,6 +62,7 @@ void WsAppConnection::on_message(websocketpp::connection_hdl hdl, message_ptr ms
 
 void WsAppConnection::on_close(websocketpp::connection_hdl hdl) {
     std::string message = "connection is close!";
+    LOG_INFO(QString("%1 from %2!").arg(message.c_str()).arg(m_uri.c_str()));
     c.get_alog().write(websocketpp::log::alevel::app, "Tx: " + message);
     //m_isConnected = false;
     if(m_outter)
@@ -71,6 +73,7 @@ void WsAppConnection::on_close(websocketpp::connection_hdl hdl) {
 
 void WsAppConnection::on_failure(websocketpp::connection_hdl hdl) {
     std::string message = "connection is failure!";
+    LOG_INFO(QString("%1 from %2!").arg(message.c_str()).arg(m_uri.c_str()));
     c.get_alog().write(websocketpp::log::alevel::app, "Tx: " + message);
     //m_isConnected = false;
     if(m_outter)
@@ -80,7 +83,8 @@ void WsAppConnection::on_failure(websocketpp::connection_hdl hdl) {
 }
 
 void WsAppConnection::on_pong(websocketpp::connection_hdl hdl , std::string msg) {
-    std::string message = "";
+    std::string message = "on_pong";
+    LOG_INFO(QString("on_pong msg:%1 from %2!").arg(msg.c_str()).arg(m_uri.c_str()));
     //c.send(hdl, message, websocketpp::frame::opcode::PONG);
     c.get_alog().write(websocketpp::log::alevel::app, "recv ping: " + msg);
 }
@@ -147,6 +151,7 @@ int  WsAppConnection::Send(std::string msg , OpcodeValue opcode1){
             return 0;
         }
     }
+    LOG_INFO(QString("Send msg failure to %1!").arg(m_uri.c_str()));
     return -1;
 }
 
@@ -157,13 +162,16 @@ void WsAppConnection::SetCallback(OutterInterfaceConnection *outter){
 
 bool WsAppConnection::on_ping(websocketpp::connection_hdl hdl, std::string msg) {
     //Send("test", websocketpp::frame::opcode::pong);
+    LOG_INFO(QString("on_ping from %1!").arg(m_uri.c_str()));
     return true;
 }
 
 void WsAppConnection::onTimer(const boost::system::error_code& ec)
 {
-    if (ec == boost::asio::error::operation_aborted)
+    if (ec == boost::asio::error::operation_aborted){
+        LOG_INFO(QString("WsAppConnection::onTimer occur boost::asio::error::operation_aborted wsServerUrl:%1"));
         return;
+    }
     std::string msg = "{\"deviceNo\":\"c5ce4b4ce34d42c54eddb13042bf6851\" , \"gameId\":\"gmly\" ,\"status\":0,\"type\":\"GameReportDeviceState\"}";
     c.send(hdl_, msg, websocketpp::frame::opcode::text);
     c.get_alog().write(websocketpp::log::alevel::app, "send msg: " + msg);
@@ -174,6 +182,7 @@ void WsAppConnection::onTimer(const boost::system::error_code& ec)
 
 void WsAppConnection::On_Interrupt(websocketpp::connection_hdl hdl){
     std::string msg = "have a Interrupt!\n";
+    LOG_INFO(QString("%1 from %2!").arg(msg.c_str()).arg(m_uri.c_str()));
     c.get_alog().write(websocketpp::log::alevel::app,  msg);
     //m_isConnected = false;
     if(m_outter)
@@ -189,6 +198,7 @@ bool WsAppConnection::isConnected(){
 int WsAppConnection::init(std::string wsUrl)
 {
     if(wsUrl.empty()){
+        LOG_ERROR("wsUrl is empty!");
         return -1;
     }
     m_uri = wsUrl;
@@ -207,7 +217,8 @@ void WsAppConnection::connect()
     client::connection_ptr con = c.get_connection(m_uri, ec);
     if (ec)
     {
-        std::cout << "could not create connection because: " << ec.message() << std::endl;
+        //std::cout << "could not create connection because: " << ec.message() << std::endl;
+        LOG_ERROR(QString(" could not create connection because:%1  serverUrl:%2!").arg(ec.message().c_str()).arg(m_uri.c_str()));
         return;
     }
 
@@ -226,6 +237,7 @@ void WsAppConnection::close()
         }
     }
     m_isConnected = false;
+    LOG_INFO(QString(" WsAppConnection::close from %1!").arg(m_uri.c_str()));
 }
 
 void WsAppConnection::closeByAccident(){
@@ -238,6 +250,7 @@ void WsAppConnection::closeByAccident(){
         }
     }
     m_isConnected = false;
+    LOG_INFO(QString(" WsAppConnection::closeByAccident from %1!").arg(m_uri.c_str()));
 }
 
 void WsAppConnection::terminate()

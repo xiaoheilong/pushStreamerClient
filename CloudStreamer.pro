@@ -49,9 +49,9 @@ QMAKE_TARGET_DESCRIPTION = push streamer and deal some servers message
 # 版权
 QMAKE_TARGET_COPYRIGHT = jiudi
 
-
-
-////////
+##############
+include(./log4qt/src/log4qt/log4qt.pri)
+########
 #加入调试信息
 QMAKE_CFLAGS_RELEASE += -g
 QMAKE_CXXFLAGS_RELEASE += -g
@@ -104,7 +104,29 @@ SOURCES += \
     consumerkeyboardvalue.cpp \
     websocketconnection.cpp \
     recordgameinfo.cpp \
-    gamedealexeception.cpp
+    gamedealexeception.cpp \
+    qlog4qt.cpp \
+    log4qt/src/log4qt/appenderskeleton.cpp \
+    log4qt/src/log4qt/basicconfigurator.cpp \
+    log4qt/src/log4qt/consoleappender.cpp \
+    log4qt/src/log4qt/dailyrollingfileappender.cpp \
+    log4qt/src/log4qt/fileappender.cpp \
+    log4qt/src/log4qt/hierarchy.cpp \
+    log4qt/src/log4qt/layout.cpp \
+    log4qt/src/log4qt/level.cpp \
+    log4qt/src/log4qt/log4qt.cpp \
+    log4qt/src/log4qt/logger.cpp \
+    log4qt/src/log4qt/loggerrepository.cpp \
+    log4qt/src/log4qt/loggingevent.cpp \
+    log4qt/src/log4qt/logmanager.cpp \
+    log4qt/src/log4qt/mdc.cpp \
+    log4qt/src/log4qt/ndc.cpp \
+    log4qt/src/log4qt/patternlayout.cpp \
+    log4qt/src/log4qt/propertyconfigurator.cpp \
+    log4qt/src/log4qt/rollingfileappender.cpp \
+    log4qt/src/log4qt/simplelayout.cpp \
+    log4qt/src/log4qt/ttcclayout.cpp \
+    log4qt/src/log4qt/writerappender.cpp
 
 HEADERS += \
         cloudGame/include/json/autolink.h \
@@ -132,7 +154,31 @@ HEADERS += \
     consumerkeyboardvalue.h \
     websocketConnection.h \
     recordgameinfo.h \
-    gamedealexeception.h
+    gamedealexeception.h \
+    qlog4qt.h \
+    globaltools.h \
+    log4qt/src/log4qt/appender.h \
+    log4qt/src/log4qt/appenderskeleton.h \
+    log4qt/src/log4qt/basicconfigurator.h \
+    log4qt/src/log4qt/consoleappender.h \
+    log4qt/src/log4qt/dailyrollingfileappender.h \
+    log4qt/src/log4qt/fileappender.h \
+    log4qt/src/log4qt/hierarchy.h \
+    log4qt/src/log4qt/layout.h \
+    log4qt/src/log4qt/level.h \
+    log4qt/src/log4qt/log4qt.h \
+    log4qt/src/log4qt/logger.h \
+    log4qt/src/log4qt/loggerrepository.h \
+    log4qt/src/log4qt/loggingevent.h \
+    log4qt/src/log4qt/logmanager.h \
+    log4qt/src/log4qt/mdc.h \
+    log4qt/src/log4qt/ndc.h \
+    log4qt/src/log4qt/patternlayout.h \
+    log4qt/src/log4qt/propertyconfigurator.h \
+    log4qt/src/log4qt/rollingfileappender.h \
+    log4qt/src/log4qt/simplelayout.h \
+    log4qt/src/log4qt/ttcclayout.h \
+    log4qt/src/log4qt/writerappender.h
 
 FORMS += \
         cloudstreamer.ui \
@@ -145,6 +191,7 @@ WEBSOCKET_LIBS_PATH=E:/local/boost_1_75_0/bin/vc14.0/lib/#E:/local/boost_1_75_0/
 INCLUDEPATH += $$PWD/cloudGame/include
 INCLUDEPATH += $$PWD/websocketpp
 INCLUDEPATH +=$$WEBSOCKET_INCLUDE_PATH
+INCLUDEPATH += $$PWD/log4qt/src
 #INCLUDEPATH += $$PWD/cloudGame/include/curl-vc140-static-32_64.7.53.0/lib/native/include
 #INCLUDEPATH += $$PWD/cloudGame/include/openssl-vc140-static-32_64.1.1.0/lib/native/include
 DEPENDPATH += $$PWD/cloudGame/lib/x64
@@ -160,9 +207,12 @@ LIBS += \
       -lUser32 \
       -lDbghelp
 
-LIBS += $$WEBSOCKET_LIBS_PATH\libboost_random-vc140-mt-x64-1_75.lib
-LIBS += $$WEBSOCKET_LIBS_PATH\libboost_date_time-vc140-mt-x64-1_75.lib
-LIBS += $$WEBSOCKET_LIBS_PATH\libboost_regex-vc140-mt-x64-1_75.lib
+#LIBS += $$WEBSOCKET_LIBS_PATH\libboost_random-vc140-mt-x64-1_75.lib
+#LIBS += $$WEBSOCKET_LIBS_PATH\libboost_date_time-vc140-mt-x64-1_75.lib
+#LIBS += $$WEBSOCKET_LIBS_PATH\libboost_regex-vc140-mt-x64-1_75.lib
+LIBS += -L$$WEBSOCKET_LIBS_PATH -llibboost_random-vc140-mt-x64-1_75 -llibboost_date_time-vc140-mt-x64-1_75 \
+      -llibboost_regex-vc140-mt-x64-1_75
+
 DISTFILES += \
     cloudGame/include/lib_json/sconsc4ript
 
