@@ -3,6 +3,7 @@
 #include "websocketpp/client.hpp"
 #include <iostream>
 #include <functional>
+#include <QTimer>
 namespace WebSocketNamsSpace{
 typedef websocketpp::client<websocketpp::config::asio_client> client;
 typedef websocketpp::frame::opcode::value  OpcodeValue;

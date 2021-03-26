@@ -85,7 +85,7 @@ void WsAppConnection::on_failure(websocketpp::connection_hdl hdl) {
 void WsAppConnection::on_pong(websocketpp::connection_hdl hdl , std::string msg) {
     std::string message = "on_pong";
     LOG_INFO(QString("on_pong msg:%1 from %2!").arg(msg.c_str()).arg(m_uri.c_str()));
-    //c.send(hdl, message, websocketpp::frame::opcode::PONG);
+    c.send(hdl, message, websocketpp::frame::opcode::PING);
     c.get_alog().write(websocketpp::log::alevel::app, "recv ping: " + msg);
 }
 
@@ -161,13 +161,14 @@ void WsAppConnection::SetCallback(OutterInterfaceConnection *outter){
 }
 
 bool WsAppConnection::on_ping(websocketpp::connection_hdl hdl, std::string msg) {
-    //Send("test", websocketpp::frame::opcode::pong);
+    Send("on_ping", websocketpp::frame::opcode::pong);
     LOG_INFO(QString("on_ping from %1!").arg(m_uri.c_str()));
     return true;
 }
 
 void WsAppConnection::onTimer(const boost::system::error_code& ec)
 {
+    LOG_INFO("enter onTimer!");
     if (ec == boost::asio::error::operation_aborted){
         LOG_INFO(QString("WsAppConnection::onTimer occur boost::asio::error::operation_aborted wsServerUrl:%1"));
         return;
@@ -178,6 +179,7 @@ void WsAppConnection::onTimer(const boost::system::error_code& ec)
     m_timer->cancel();
     m_timer = std::make_shared<boost::asio::deadline_timer>(c.get_io_service(), boost::posix_time::seconds(5));
     m_timer->async_wait(bind(&WsAppConnection::onTimer, this, _1));
+    LOG_INFO("leave onTimer!");
 }
 
 void WsAppConnection::On_Interrupt(websocketpp::connection_hdl hdl){
@@ -208,6 +210,7 @@ int WsAppConnection::init(std::string wsUrl)
     c.set_fail_handler(websocketpp::lib::bind(&WsAppConnection::on_failure, this, _1));
     c.set_pong_handler(websocketpp::lib::bind(&WsAppConnection::on_pong, this, _1, _2));
     c.set_interrupt_handler(websocketpp::lib::bind(&WsAppConnection::On_Interrupt, this, _1));
+    c.set_ping_handler(websocketpp::lib::bind(&WsAppConnection::on_ping, this, _1, _2));
     return 0;
 }
 

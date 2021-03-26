@@ -432,6 +432,12 @@ void KeyBoardThread::StopKeyPingTImer(){
 //    }
 }
 
+
+
+
+
+
+
 void KeyBoardThread::StartReconnectThread(){
     StopReconnectThread();
     m_reconnectThread = std::make_shared<std::thread>([&](){
@@ -464,6 +470,10 @@ void KeyBoardThread::OnKeyPingTimer(){
         if(g_This){
             g_This->addLogToEdit(UI_INFO ,"OnKeyPingTimer success!");
         }
+    }
+
+    if(m_wsBoostSocket.get()){
+        m_wsBoostSocket->Send("Ping" , OpcodeValue::PING);
     }
 }
 
@@ -526,17 +536,25 @@ void KeyBoardThread::DealTheFullKeyboardModel(Json::Value  &root){
         }
         //////is upper key
         if(!IsLeftKeyboardNumberLetter(keyTemp)){
-            QString keyMapping = m_iniParse1->GetValue(g_keyBoardIniTopic , std::to_string(keyTemp).c_str()).toString();
-            if(!keyMapping.isEmpty()){//功能按键
-                QString keyMappingValue = m_iniParse2->GetValue(g_keyBoardIniTopic, keyMapping).toString();
-                if(!keyMappingValue.isEmpty()){
-                    int key = keyMappingValue.toInt();
-                    if(key > 0){
-                        KeyDown(key);
+            if(m_iniParse1.get()){
+                QString keyMapping = m_iniParse1->GetValue(g_keyBoardIniTopic , std::to_string(keyTemp).c_str()).toString();
+                if(!keyMapping.isEmpty()){//功能按键
+                    if(m_iniParse2.get()){
+                        QString keyMappingValue = m_iniParse2->GetValue(g_keyBoardIniTopic, keyMapping).toString();
+                        if(!keyMappingValue.isEmpty()){
+                            int key = keyMappingValue.toInt();
+                            if(key > 0){
+                                KeyDown(key);
+                            }
+                            if( 20 == key){
+                                m_isUpperKey = !m_isUpperKey;
+                            }
+                        }else{
+                            LOG_ERROR("keyMappingValue is empty!");
+                        }
                     }
-                    if( 20 == key){
-                        m_isUpperKey = !m_isUpperKey;
-                    }
+                }else{
+                    LOG_ERROR("keyMapping is empty!");
                 }
             }
         }else{//直接处理的键
@@ -878,10 +896,12 @@ bool KeyBoardThread::start(QString wsUrl , QString loginCommand){
     StartKeyPingTimer();
     /////////
     QString executePath = QCoreApplication::applicationDirPath();
-    if(!executePath.isEmpty()){
+    if(!executePath.isEmpty() && m_iniParse1.get() && m_iniParse2.get()){
         if(0 != m_iniParse1->OpenFile(executePath + "/fullKeyboardValueName.ini") || 0 != m_iniParse1->OpenFile(executePath + "/fullKeyboardNameValue.ini")){
             g_This->addLogToEdit(UI_ERROR, "m_iniParse1 or m_iniParse2 open failure!");
         }
+    }else{
+        LOG_INFO(QString("executePath: %1  m_iniParse1:%2   m_iniParse2:%3  ").arg(executePath).arg(m_iniParse1.get()?"not null":"null").arg(m_iniParse2.get()?"not null":"null"));
     }
     ///
     QThread::start();
@@ -916,6 +936,8 @@ void KeyBoardThread::StopAccidental(){
     if(m_wsBoostSocket.get()){
         m_wsBoostSocket->closeByAccident();
         m_wsBoostSocket.reset();
+    }else{
+        LOG_INFO("StopAccidental m_wsBoostSocket is NULL!");
     }
 
     g_This->addLogToEdit(UI_ERROR, " KeyBoardThread quit!");
@@ -1064,14 +1086,20 @@ CloudStreamer::~CloudStreamer()
     if(m_cloudGameServiceIterator.get()){
         disconnect(m_cloudGameServiceIterator.get() ,SIGNAL(ParseMessage(QString )), this , SLOT(ParseMessageCallback(QString)));
         m_cloudGameServiceIterator.reset();
+    }else{
+        LOG_INFO("~CloudStreamer  m_cloudGameServiceIterator is null!");
     }
     if(m_iniParse.get()){
         m_iniParse.reset();
+    }else{
+        LOG_INFO("~CloudStreamer  m_iniParse is null!");
     }
     if(m_keyBoardThread.get()){
         m_keyBoardThread->stop();
         disconnect(m_keyBoardThread.get() , SIGNAL(RecordSignal(QString , QString)) , this , SLOT(RecordSignalCallBack(QString , QString )));
         m_keyBoardThread.reset();
+    }else{
+         LOG_INFO("~CloudStreamer  m_keyBoardThread is null!");
     }
     StopReportStatusTimer();
     ///////////disconnect signal-slot
@@ -1184,6 +1212,8 @@ void  CloudStreamer::StopProtectGstLaunch(){
         if(m_gstlaunchProtectThead->joinable()){
             m_gstlaunchProtectThead->join();
             m_gstlaunchProtectThead.reset();
+        }else{
+            LOG_INFO("StopProtectGstLaunch  m_gstlaunchProtectThead couldn't joinable!");
         }
     }
 }
@@ -1200,6 +1230,8 @@ void CloudStreamer::RecoveryGame(){
         m_startGameThread = std::make_shared<std::thread>(&CloudStreamer::StartGameCallback, this , rootJsonStr , NORMAL_MODEL);
         if(m_startGameThread.get()){
             m_startGameThread->detach();
+        }else{
+             LOG_INFO("RecoveryGame  m_startGameThread  is null!");
         }
     }
 }
@@ -1208,6 +1240,8 @@ void    CloudStreamer::StopWorkThread(std::shared_ptr<std::thread> thread){
     if(thread.get()){
         if(thread->joinable()){
             thread->join();
+        }else{
+            LOG_INFO("StopWorkThread  thread  is couldn't joinable!");
         }
         thread.reset();
         thread = NULL;
@@ -1223,6 +1257,8 @@ void CloudStreamer::QuitForce(bool value){
     }
     if(0 == streamConfig.OpenFile(executePath + "//streamConfig.ini")){
         streamConfig.SetValue("streamConfig" , "forceQuit", value ?"1":"0");
+    }else{
+        LOG_INFO(QString("QuitForce streamConfig open failure the file path=%1 !").arg(executePath + "//streamConfig.ini"));
     }
 }
 
@@ -1267,7 +1303,11 @@ int CloudStreamer::OnSystemTrayClicked(QSystemTrayIcon::ActivationReason reason)
 
 
 int CloudStreamer::OnExit(){
-    m_systray->deleteLater();
+    if(m_systray){
+        m_systray->deleteLater();
+    }else{
+        LOG_INFO("OnExit  m_systray is null!");
+    }
     /////////////
     QuitForce(true);
     if(m_gameId.isEmpty()){
@@ -1278,7 +1318,11 @@ int CloudStreamer::OnExit(){
         KillGameByName(gamePath);
         addLogToEdit(UI_INFO , "game stop success!\n");
     }
-    ui->pushButton_3->clicked();
+    if(ui->pushButton_3){
+        ui->pushButton_3->clicked();
+    }else{
+        LOG_ERROR("OnExit ui->pushButton_3 is NULL!");
+    }
     //QApplication::exit(0);
     return 0;
 }
@@ -1488,22 +1532,27 @@ void CloudStreamer::on_pushButton_2_clicked()
 ////////关闭推流
 void CloudStreamer::on_pushButton_3_clicked()
 {
-    QString roomName = ui->lineEdit_3->text();
-    QString pushServer = ui->lineEdit->text();
-    std::string roomNameStr = roomName.toStdString();
-    std::string pushServerStr = pushServer.toStdString();
-    if(UI_MODE::DEFAULT_MODE == m_mode || UI_MODE::ONLY_PUSH_STREAMER == m_mode){
-         closepush(const_cast<char*>(roomNameStr.c_str()),const_cast<char*> (pushServerStr.c_str()));
-    }
-    ///////
-    if(UI_MODE::DEFAULT_MODE == m_mode || UI_MODE::ONLY_KEY_BOARD == m_mode){
-        if(m_keyBoardThread.get()){
-            m_keyBoardThread->stop();
-            disconnect(m_keyBoardThread.get() , SIGNAL(RecordSignal(QString , QString)) , this , SLOT(RecordSignalCallBack(QString , QString )));
-            m_keyBoardThread.reset();
+    LOG_INFO("enter on_pushButton_3_clicked!");
+    if(ui->lineEdit_3  &&  ui->label_16){
+        QString roomName = ui->lineEdit_3->text();
+        QString pushServer = ui->lineEdit->text();
+        std::string roomNameStr = roomName.toStdString();
+        std::string pushServerStr = pushServer.toStdString();
+        if(UI_MODE::DEFAULT_MODE == m_mode || UI_MODE::ONLY_PUSH_STREAMER == m_mode){
+            closepush(const_cast<char*>(roomNameStr.c_str()),const_cast<char*> (pushServerStr.c_str()));
         }
+        ///////
+        if(UI_MODE::DEFAULT_MODE == m_mode || UI_MODE::ONLY_KEY_BOARD == m_mode){
+            if(m_keyBoardThread.get()){
+                m_keyBoardThread->stop();
+                disconnect(m_keyBoardThread.get() , SIGNAL(RecordSignal(QString , QString)) , this , SLOT(RecordSignalCallBack(QString , QString )));
+                m_keyBoardThread.reset();
+            }
+        }
+        ui->label_16->setText("stop!");
+    }else{
+        LOG_ERROR("ui->lineEdit_3  or  ui->label_16 is null!");
     }
-    ui->label_16->setText("stop!");
 }
 ////////连接wsServer
 void CloudStreamer::on_pushButton_4_clicked()
@@ -1610,7 +1659,7 @@ void CloudStreamer::DisconnectCallback(QString url, QString data){
 void CloudStreamer::on_game_status_timer(){
     QString gameName = GetValueByGameID(m_gameId , "gameExeName");
     RecordGameInfo *recordInfos1 = RecordGameInfo::GetInstance();
-    if(isUpdate()){
+    if(isUpdate() ){
         addLogToEdit(UI_INFO ,  "pushStreamer is updating!");
         recordInfos1->RecordInfo(1);
     }
@@ -2139,7 +2188,7 @@ QString  WSServiceTransferSignStringEx(QString deviceNo, QString sessionId , QSt
     RecordGameInfo *recordInfos1 = RecordGameInfo::GetInstance();
     gameIsRunning = recordInfos1->GetGameStatus();
     data["status"] = gameIsRunning ? 1 : 0;
-    data["pushVersion"] = "1.0.1.7";
+    data["pushVersion"] = "1.0.1.8";
     //////////////////
     root["data"] = data;
     ////////

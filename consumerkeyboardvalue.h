@@ -57,10 +57,10 @@ namespace ConsumerKeyboardValueSpace{
             virtual void Stop(){
                 if(m_threadFlag){
                     m_threadFlag = false;
-                    if(m_mutex->tryLock()){
-                        m_event->wakeAll();
-                        m_mutex->unlock();
-                    }
+                    //if(m_mutex->tryLock()){
+                      //  m_event->wakeAll();
+                      //  m_mutex->unlock();
+                    //}
                 }
                 if(isRunning()){
                     this->quit();
@@ -72,9 +72,9 @@ namespace ConsumerKeyboardValueSpace{
                 int ret = -1;
                 if(m_keyboardVector.empty()){
                     PushTValue(value);
-                    m_mutex->lock();
-                    m_event->wakeAll();
-                    m_mutex->unlock();
+                   // m_mutex->lock();
+                   // m_event->wakeAll();
+                   // m_mutex->unlock();
                 }else{
                     PushTValue(value);
                 }
@@ -106,9 +106,9 @@ namespace ConsumerKeyboardValueSpace{
         virtual void run(){
             while(m_threadFlag){
                     if(m_keyboardVector.empty() ){
-                         m_mutex->lock();
-                         m_event->wait(m_mutex.get());
-                         m_mutex->unlock();
+                         //m_mutex->lock();
+                        // m_event->wait(m_mutex.get());
+                         //m_mutex->unlock();
 
                     }
                     if(!m_keyboardVector.empty()){
