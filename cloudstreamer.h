@@ -18,6 +18,52 @@ using namespace CloudGameServiceIteratorSpace;
 namespace Ui {
 class CloudStreamer;
 }
+
+namespace CloudStreamerSpace{
+    struct PushStreamerParams{
+      QString m_serverUrl;
+      QString m_domain;
+      QString m_roomId;
+      QString m_framerate;
+      QString m_bitrate;
+      QString m_deadline;
+      QString m_cpuused;
+      QString m_x;
+      QString m_y;
+      QString m_mode;
+      QString m_capmode;
+      QString m_vol;
+      void SetValue(QString serverUrl , QString domain , QString roomId , QString framerate, QString bitrate ,QString deadline , QString cpuused ,QString x , QString y
+                    ,QString mode, QString capmode , QString vol){
+          m_serverUrl = serverUrl;
+          m_domain = domain;
+          m_roomId = roomId;
+          m_framerate =framerate ;
+          m_bitrate = bitrate;
+          m_deadline = deadline;
+          m_cpuused = cpuused;
+          m_x = x;
+          m_y = y;
+          m_mode = mode;
+          m_capmode = capmode;
+          m_vol = vol;
+      }
+    };
+
+    struct StartGameParams{
+        QString m_gameId;
+        QString m_startGameParams;
+        QString m_data;
+        int m_force;
+        void SetValue(QString gameId , QString startGameParams , QString data , int force){
+            m_gameId = gameId;
+            m_startGameParams = startGameParams;
+            m_data = data;
+            m_force = force;
+        }
+    };
+}
+
 using namespace DealIniFileSpace;
 using namespace KeyValueTransformtNamespace;
 using namespace WebSocketNamsSpace;
@@ -124,6 +170,8 @@ signals:
     void InputLog(QString flagStr,QString logStr);
 protected:
     typedef CloudGameServiceIteratorSpace::CloudGameServiceIterator  CloudGameServiceIterator;
+    typedef CloudStreamerSpace::PushStreamerParams  PushStreamerParams;
+    typedef CloudStreamerSpace::StartGameParams   StartGameParams;
 public:
     void BindServiceIterator(std::shared_ptr<CloudGameServiceIterator>  iterator);
     std::shared_ptr<CloudStreamer> GetPtr();
@@ -189,6 +237,14 @@ private:
 
     void QuitForce(bool value);
     void KillGameByName(QString gameName);
+
+    void ClearFunctionParams();
+
+    int  PushStreamerAction(QString serverUrl , QString domain , QString roomId , QString framerate, QString bitrate ,QString deadline , QString cpuused ,QString x , QString y
+                            ,QString mode, QString capmode , QString vol);
+    int  StartGameAction(QString gameId , QString startGameParams , QString data , int force);
+
+    int  StartKeyboardAction(QString gameId , QString controlUrl , QString keyboardLoginParams);
 public:
     void  addLogToEdit(QString flagStr , QString logStr);//添加一条日志到日志
 protected:
@@ -243,5 +299,7 @@ private:
     std::function<void(int)> m_startGameFunc;
     std::mutex m_gstLaunchMutex;
     QSystemTrayIcon *m_systray;
+    PushStreamerParams m_pushStreamerParams;
+    StartGameParams  m_startGameParams;
 };
 #endif // CLOUDSTREAMER_H
