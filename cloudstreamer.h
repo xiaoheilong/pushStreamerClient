@@ -56,6 +56,9 @@ public:
     /// \param keyboardConfigIni  is the keyBoardIniConfig ini
     ///
     void SetKeyBoardModel(QString nameKeyTablePath , QString defaultKeyBoardPath , QString gameKeyBoardPath);
+
+    void SetDeviceNumber(QString deviceNum);
+    QString GetDeviceNumber();
 private:
     void StartWebSocket();
     void CloseWebsocket();
@@ -87,6 +90,7 @@ protected:
     std::shared_ptr<DealIniFile>  m_iniParse1;
     std::shared_ptr<DealIniFile>  m_iniParse2;
     bool m_isUpperKey;
+    QString m_deviceNumberl;
 };
 
 enum UI_MODE{

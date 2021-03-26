@@ -362,7 +362,7 @@ QString AssembleWSServer(QString wsUrl ,  QString key , QString deviceNo){
 ////////////
 KeyBoardThread::KeyBoardThread(QObject * parent ):QThread(parent) , m_threadFlag(false), m_wsUrl("") , m_loginCommand(""),
     m_wsBoostSocket(NULL), m_keyPingTimer(NULL), m_keyPingThread(NULL), m_reconnectThread(NULL),m_iniParse1(NULL) ,m_iniParse2(NULL),
-    m_isUpperKey(false)
+    m_isUpperKey(false),m_deviceNumberl("")
 {
     connect(this , SIGNAL(AccidentalSignal()) , this , SLOT(AccidentalTermination()),Qt::DirectConnection);
     m_iniParse1 = std::make_shared<DealIniFile>();
@@ -379,6 +379,14 @@ KeyBoardThread::~KeyBoardThread(){
    disconnect(this , SIGNAL(AccidentalSignal()) , this , SLOT(AccidentalTermination()));
    m_iniParse1.reset();
    m_iniParse2.reset();
+}
+
+void KeyBoardThread::SetDeviceNumber(QString deviceNum){
+    m_deviceNumberl = deviceNum;
+}
+
+QString KeyBoardThread::GetDeviceNumber(){
+    return m_deviceNumberl;
 }
 
 void KeyBoardThread::StartKeyPingTimer(){
@@ -471,9 +479,26 @@ void KeyBoardThread::OnKeyPingTimer(){
             g_This->addLogToEdit(UI_INFO ,"OnKeyPingTimer success!");
         }
     }
+    if(m_deviceNumberl.isEmpty()){
+        LOG_ERROR("OnKeyPingTimer m_deviceNumberl is empty!");
+        return;
+    }
+    //{"mode":2,"port":设备号,"type":"ping","ud":10}
+    Json::Value root;
+    Json::Value data;
 
+    root["mode"] = 2;
+    root["port"] = m_deviceNumberl.toLocal8Bit().data();
+    root["type"] = "ping";
+    root["ud"] = 10;
+
+    ////////
+    Json::FastWriter styled_write;
+    std::string rootJsonStr = styled_write.write(root);
     if(m_wsBoostSocket.get()){
-        m_wsBoostSocket->Send("Ping" , OpcodeValue::PING);
+        if(0 !=m_wsBoostSocket->Send(rootJsonStr , OpcodeValue::text)){
+            LOG_ERROR(QString("KeyBoardThread send msg failure msg=%1").arg(rootJsonStr.c_str()));
+        }
     }
 }
 
@@ -1781,22 +1806,16 @@ void CloudStreamer::StartGameCallback(QString data , StartGameModel model){
                                                capmode, vol, this]{
                     int ret = closepush(roomId.toLocal8Bit().data() , serverUrl.toLocal8Bit().data());
                     if(!ret){
-                        //QMessageBox::information(this , "information!" ,"close stream failure!\n");
                         addLogToEdit(UI_ERROR ,  "close stream failure!\n");
                         throw GameDealExeception("closepush failure!" , -3);
-                        //return;
                     }
-//                    addLogToEdit(UI_INFO , QString("push stream  params serverUrl=%1  domain:%2  roomId=%3").arg(serverUrl).arg(domain).arg(roomId));
-                    //ui->lineEdit_3->setText(roomId);
-                    //ui->lineEdit->setText(serverUrl);
+
                     ret = push(roomId.toLocal8Bit().data(),serverUrl.toLocal8Bit().data(), domain.toLocal8Bit().data(),framerate.toInt() ,
                                bitrate.toInt(),deadline.toInt() , cpuused.toInt(),x.toInt(),
                                y.toInt(), mode.toInt(), capmode.toInt(), vol.toInt());
                     if(!ret){
-                        //QMessageBox::information(this , "information!" ,"push stream failure!\n");
                         addLogToEdit(UI_ERROR , "push stream failure!\n");
                         throw GameDealExeception("push stream failure!", -4);
-                        //return;
                     }
                     addLogToEdit(UI_INFO , "push stream success!\n");
                 });
@@ -1853,6 +1872,7 @@ void CloudStreamer::StartGameCallback(QString data , StartGameModel model){
                     m_controlUrl = controlUrl;
                     QString wsUrl  = AssembleWSServer(controlUrl , g_wsServerKey , m_deviceNo);
                     //ui->textEdit->setText(keyboardLoginParams);
+                    m_keyBoardThread->SetDeviceNumber(m_deviceNo);
                     m_keyBoardThread->start(/*controlUrl*/wsUrl ,keyboardLoginParams);
                     emit this->ChangeCloudStreamerStatue("start!");
                     ////start the thread protect gst-launch-1.0
