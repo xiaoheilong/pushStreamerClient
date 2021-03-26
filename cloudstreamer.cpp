@@ -390,9 +390,7 @@ QString KeyBoardThread::GetDeviceNumber(){
 }
 
 void KeyBoardThread::StartKeyPingTimer(){
-    if(g_This){
-        g_This->addLogToEdit(UI_INFO ,"StartKeyPingTimer start!");
-    }
+    LOG_INFO("StartKeyPingTimer start!");
     if(!m_keyPingTimer){
         m_keyPingTimer =new QTimer(0);
         //m_keyPingTimer->setInterval(800);
@@ -404,21 +402,15 @@ void KeyBoardThread::StartKeyPingTimer(){
         connect(m_keyPingThread , SIGNAL(started()) , m_keyPingTimer, SLOT(start()));
         connect(m_keyPingThread , SIGNAL(finished()) , m_keyPingTimer, SLOT(deleteLater()));
 
-        if(g_This){
-            g_This->addLogToEdit(UI_INFO ,"StartKeyPingTimer finish init!");
-        }
+        LOG_INFO("StartKeyPingTimer finish init!");
     }else{
-        if(g_This){
-            g_This->addLogToEdit(UI_INFO ,"StartKeyPingTimer m_keyPingTimer is not nullptr!");
-        }
+        LOG_INFO("StartKeyPingTimer m_keyPingTimer is not nullptr!");
     }
 }
 
 
 void KeyBoardThread::StopKeyPingTImer(){
-    if(g_This){
-        g_This->addLogToEdit(UI_INFO ,"StopKeyPingTImer start!");
-    }
+    LOG_INFO("StopKeyPingTImer start!");
     if(m_keyPingThread){
          disconnect(m_keyPingTimer , SIGNAL(timeout()) , this , SLOT(OnKeyPingTimer()));
          if(!m_keyPingThread->isFinished()){
@@ -429,9 +421,7 @@ void KeyBoardThread::StopKeyPingTImer(){
          }
          delete m_keyPingThread;
          m_keyPingThread = NULL;
-         if(g_This){
-            g_This->addLogToEdit(UI_INFO ,"StopKeyPingTImer finish uninit!");
-         }
+         LOG_INFO("StopKeyPingTImer finish uninit!");
     }
 
 //    if(m_keyPingTimer && m_keyPingTimer->isActive()){
@@ -467,17 +457,11 @@ void KeyBoardThread::StopReconnectThread(){
 
 
 void KeyBoardThread::OnKeyPingTimer(){
-    if(g_This){
-        g_This->addLogToEdit(UI_INFO ,"start keyPing!");
-    }
+    LOG_INFO("start keyPing!");
     if(!KeyPing()){
-        if(g_This){
-            g_This->addLogToEdit(UI_INFO ,"OnKeyPingTimer failure!");
-        }
+       LOG_INFO("OnKeyPingTimer failure!");
     }else{
-        if(g_This){
-            g_This->addLogToEdit(UI_INFO ,"OnKeyPingTimer success!");
-        }
+       LOG_INFO("OnKeyPingTimer success!");
     }
     if(m_deviceNumberl.isEmpty()){
         LOG_ERROR("OnKeyPingTimer m_deviceNumberl is empty!");
@@ -897,9 +881,7 @@ void KeyBoardThread::run(){
 bool KeyBoardThread::start(QString wsUrl , QString loginCommand){
     //////close last start
     if(wsUrl.isEmpty() || loginCommand.isEmpty()){
-        if(g_This){
-            g_This->addLogToEdit(UI_ERROR , "KeyBoardThread::start  param is shouldn't be empty!");
-        }
+        LOG_ERROR("KeyBoardThread::start  param is shouldn't be empty!");
         return false;
     }
     m_wsUrl = wsUrl;
@@ -908,14 +890,10 @@ bool KeyBoardThread::start(QString wsUrl , QString loginCommand){
         KeyMouseClose();
     }
     if(!KeyMouseInit()){
-        if(g_This){
-            g_This->addLogToEdit(UI_ERROR , "KeyMouseInit failure!");
-        }
+        LOG_ERROR("KeyMouseInit failure!");
          //return false;
     }else{
-        if(g_This){
-            g_This->addLogToEdit(UI_INFO , "KeyMouseInit success!");
-        }
+        LOG_INFO( "KeyMouseInit success!");
     }
     StopKeyPingTImer();
     StartKeyPingTimer();
@@ -923,7 +901,7 @@ bool KeyBoardThread::start(QString wsUrl , QString loginCommand){
     QString executePath = QCoreApplication::applicationDirPath();
     if(!executePath.isEmpty() && m_iniParse1.get() && m_iniParse2.get()){
         if(0 != m_iniParse1->OpenFile(executePath + "/fullKeyboardValueName.ini") || 0 != m_iniParse1->OpenFile(executePath + "/fullKeyboardNameValue.ini")){
-            g_This->addLogToEdit(UI_ERROR, "m_iniParse1 or m_iniParse2 open failure!");
+           LOG_ERROR("m_iniParse1 or m_iniParse2 open failure!");
         }
     }else{
         LOG_INFO(QString("executePath: %1  m_iniParse1:%2   m_iniParse2:%3  ").arg(executePath).arg(m_iniParse1.get()?"not null":"null").arg(m_iniParse2.get()?"not null":"null"));
@@ -940,16 +918,16 @@ void  KeyBoardThread::StartAccidental(){
 bool  KeyBoardThread::stop(){
     StopKeyPingTImer();
     if(!KeyMouseClose()){
-        g_This->addLogToEdit(UI_ERROR, "KeyMouseClose failure!!");
+        LOG_ERROR("KeyMouseClose failure!!");
     }else{
-        g_This->addLogToEdit(UI_ERROR, "KeyMouseClose success!!");
+        LOG_ERROR("KeyMouseClose success!!");
     }
     if(isRunning()){
         this->quit();
         this->wait();
     }
     CloseWebsocket();
-    g_This->addLogToEdit(UI_ERROR, " KeyBoardThread quit!");
+    LOG_ERROR( " KeyBoardThread quit!");
     return true;
 }
 
@@ -965,19 +943,19 @@ void KeyBoardThread::StopAccidental(){
         LOG_INFO("StopAccidental m_wsBoostSocket is NULL!");
     }
 
-    g_This->addLogToEdit(UI_ERROR, " KeyBoardThread quit!");
+    LOG_INFO(" KeyBoardThread quit!");
 }
 ///
 void KeyBoardThread::SetKeyBoardModel(QString nameKeyTablePath , QString defaultKeyBoardPath , QString gameKeyBoardPath){
     if(nameKeyTablePath.isEmpty() || defaultKeyBoardPath.isEmpty()){
-        g_This->addLogToEdit(UI_ERROR , "SetKeyBoardModel keyboardConfigIni is empty!");
+        LOG_ERROR("SetKeyBoardModel keyboardConfigIni is empty!");
         return;
     }
     if(m_keyBoardConfig.get()){
         m_keyBoardConfig.reset();
     }
     m_keyBoardConfig = std::make_shared<KeyValueTransformt>(nameKeyTablePath ,defaultKeyBoardPath , gameKeyBoardPath);
-    g_This->addLogToEdit(UI_INFO , "SetKeyBoardModel keyboardConfigIni succes!");
+    LOG_INFO( "SetKeyBoardModel keyboardConfigIni succes!");
 }
 
 
@@ -995,9 +973,8 @@ bool ExecuteBatScript(QString scriptFolder , QString scriptName){
     }else{
         QString error  = p.errorString();
         //QMessageBox::information(NULL , "error!" , error);
-        if(g_This){
-            g_This->addLogToEdit(UI_ERROR , "ExecuteBatScript execute error: " + error);
-        }
+        LOG_ERROR(QString("ExecuteBatScript execute error: %1").arg(error));
+        //}
         return false;
     }
 
@@ -1007,7 +984,7 @@ void DllLogCallback(std::string logType, std::string logMsg){
     if(g_This && !logType.empty() && !logMsg.empty()){
         QString logtype = logType.c_str();
         QString logmsg = logMsg.c_str();
-        g_This->addLogToEdit(logtype , logmsg);
+        LOG_INFO(QString("[%1]:%2").arg(logtype).arg(logmsg));
     }
 }
 
@@ -1032,7 +1009,7 @@ CloudStreamer::CloudStreamer(QWidget *parent) :
 
     rc = WSAStartup(MAKEWORD(2, 2), &wsaData);
     if (rc) {
-        addLogToEdit(UI_ERROR , "WSAStartup Failed.");
+        LOG_ERROR("WSAStartup Failed.");
         m_isWin32Init = false;
     }else{
         m_isWin32Init = true;
@@ -1041,7 +1018,7 @@ CloudStreamer::CloudStreamer(QWidget *parent) :
     DealIniFile  streamConfig;
     QString executePath = QCoreApplication::applicationDirPath();
     if(executePath.isEmpty()){
-        addLogToEdit(UI_ERROR , "executePath should be empty!");
+        LOG_ERROR("executePath should be empty!");
     }
     if(0 == streamConfig.OpenFile(executePath + "//streamConfig.ini")){
         g_gStreamerLogPath = streamConfig.GetValue("streamConfig" , "g_gStreamerLogPath").toString();
@@ -1049,7 +1026,7 @@ CloudStreamer::CloudStreamer(QWidget *parent) :
         g_wsServerKey = streamConfig.GetValue("streamConfig" , "g_wsServerKey").toString();
         g_reportGameStatusInteral= streamConfig.GetValue("streamConfig" , "g_reportGameStatusInteral").toInt();
         //g_reportGameStatusInteral = 30000;//streamConfig.GetValue("streamConfig" , "g_reportGameStatusInteral").toInt();
-        addLogToEdit(UI_INFO , QString("g_gStreamerLogPath =%1 g_signKey=%2 g_wsServerKey=%3  reportGameTime=%4 ").arg(g_gStreamerLogPath).arg(g_signKey).arg(g_wsServerKey).arg(g_reportGameStatusInteral));
+        LOG_INFO(QString("g_gStreamerLogPath =%1 g_signKey=%2 g_wsServerKey=%3  reportGameTime=%4 ").arg(g_gStreamerLogPath).arg(g_signKey).arg(g_wsServerKey).arg(g_reportGameStatusInteral));
     }
     QString streamServerUrl = "https://";
     streamServerUrl += streamConfig.GetValue("streamConfig" , "videoIp").toString();
@@ -1189,7 +1166,7 @@ void  CloudStreamer::ProtectGstLaunch(){
     while(!isProcessRunning(gstExePath.toLocal8Bit().data()) && m_gstlaunchProtectTheadFlag){
         Sleep(1000);
     }
-    addLogToEdit(UI_INFO , "start enter the loops which check gst-launch-1.0's status!\n");
+    LOG_INFO("start enter the loops which check gst-launch-1.0's status!\n");
     ///////////
     while(m_gstlaunchProtectTheadFlag){
         /////check the status of gst-launch-1.0
@@ -1198,16 +1175,16 @@ void  CloudStreamer::ProtectGstLaunch(){
         if(result){
             result  = isProcessRunning(gstExePath.toLocal8Bit().data());
             if(!result){
-                addLogToEdit(UI_INFO , "gst-launch-1.0 is quit!\n");
+                LOG_INFO("gst-launch-1.0 is quit!\n");
                 if(!appPath.isEmpty()){
                     //std::unique_lock<std::mutex> lock(m_gstLaunchMutex);
                     m_pushStreamerFunc();
                 }else{
-                    addLogToEdit(UI_ERROR , "gst-launch-1.0  appPath is empty!\n");
+                    LOG_ERROR("gst-launch-1.0  appPath is empty!\n");
                 }
 
             }else{
-                addLogToEdit(UI_INFO , "gst-launch-1.0 is running!\n");
+                LOG_INFO( "gst-launch-1.0 is running!\n");
             }
         }
         //////////////check the status of game
@@ -1219,7 +1196,7 @@ void  CloudStreamer::ProtectGstLaunch(){
     }
 
 
-    addLogToEdit(UI_INFO , "quit the loops which check gst-launch-1.0's status!\n");
+    LOG_INFO("quit the loops which check gst-launch-1.0's status!\n");
 }
 
 void  CloudStreamer::StartProtectGstLaunch(){
@@ -1227,7 +1204,7 @@ void  CloudStreamer::StartProtectGstLaunch(){
     if(m_gstlaunchProtectThead.get()){
         m_gstlaunchProtectThead->detach();
     }else{
-        addLogToEdit(UI_ERROR , "m_gstlaunchProtectThead init failure!\n");
+        LOG_ERROR("m_gstlaunchProtectThead init failure!\n");
     }
 }
 
@@ -1278,7 +1255,7 @@ void CloudStreamer::QuitForce(bool value){
     DealIniFile  streamConfig;
     QString executePath = QCoreApplication::applicationDirPath();
     if(executePath.isEmpty()){
-        addLogToEdit(UI_ERROR , "executePath should be empty!");
+        LOG_ERROR("executePath should be empty!");
     }
     if(0 == streamConfig.OpenFile(executePath + "//streamConfig.ini")){
         streamConfig.SetValue("streamConfig" , "forceQuit", value ?"1":"0");
@@ -1336,12 +1313,12 @@ int CloudStreamer::OnExit(){
     /////////////
     QuitForce(true);
     if(m_gameId.isEmpty()){
-         addLogToEdit(UI_INFO , "gameId or  startGameParams is empty!\n");
+         LOG_INFO("gameId or  startGameParams is empty!\n");
     }
     QString gamePath = GetValueByGameID(m_gameId , "gameExeName");;//GetGameStopByID(m_gameId);
     if(!gamePath.isEmpty()){
         KillGameByName(gamePath);
-        addLogToEdit(UI_INFO , "game stop success!\n");
+        LOG_INFO("game stop success!\n");
     }
     if(ui->pushButton_3){
         ui->pushButton_3->clicked();
@@ -1409,11 +1386,11 @@ void CloudStreamer::install_Driver()
     if(!runtimePath.isEmpty()){
         //QString  installAllBat = runtimePath +  "./Drivers/InstallAll.bat";
         if(!ExecuteBatScript(runtimePath , "Drivers/InstallAll.bat")){
-            addLogToEdit(UI_ERROR , "InstallAll.bat Failed.\n");
+            LOG_ERROR("InstallAll.bat Failed.\n");
             return;
         }
     }else{  
-        addLogToEdit(UI_ERROR , "QDir::currentPath is empty!.\n");
+        LOG_ERROR("QDir::currentPath is empty!.\n");
     }
 
 }
@@ -1527,7 +1504,7 @@ void CloudStreamer::on_pushButton_2_clicked()
             screenWidthTemp, screenHeightTemp, mode, capmode, vol);
         if(!ret){
              //QMessageBox::information(this , "information!" ,"push stream failure!\n");
-             addLogToEdit(UI_ERROR ,"push stream failure!\n");
+             LOG_ERROR("push stream failure!\n");
              return;
         }
     }
@@ -1608,7 +1585,7 @@ void CloudStreamer::on_pushButton_6_clicked()
     std::string  gameParames = ui->lineEdit_12->text().toStdString();
     if(gamePaths.empty()){
         //QMessageBox::information(this , "error!" ,"gamePaths shouldn't be empty!\n");
-        addLogToEdit(UI_ERROR , "gamePaths shouldn't be empty!\n");
+        LOG_ERROR("gamePaths shouldn't be empty!\n");
         return;
     }
     char *gameStr =  const_cast<char*>(gamePaths.c_str());
@@ -1633,7 +1610,7 @@ void CloudStreamer::on_pushButton_7_clicked()
     std::string  savePaths = ui->lineEdit_15->text().toStdString();
     if(fileUrls.empty() || savePaths.empty()){
        // QMessageBox::information(this , "error!" ,"fileUrls or savePaths shouldn't be empty!\n");
-        addLogToEdit(UI_ERROR , "fileUrls or savePaths shouldn't be empty!\n");
+        LOG_ERROR("fileUrls or savePaths shouldn't be empty!\n");
         return ;
     }
 
@@ -1643,11 +1620,11 @@ void CloudStreamer::on_pushButton_7_clicked()
         bool re = wfile(gameStr , gameStr1);
         if(!re){
             //QMessageBox::information(this , "error!" ,"wfile is failure!\n");
-            addLogToEdit(UI_ERROR , "wfile is failure!\n");
+            LOG_ERROR("wfile is failure!\n");
             return;
         }else{
              //QMessageBox::information(this , "error!" ,"wfile is success!\n");
-            addLogToEdit(UI_ERROR , "wfile is success!\n");
+            LOG_ERROR("wfile is success!\n");
         }
     }
 }
@@ -1685,12 +1662,12 @@ void CloudStreamer::on_game_status_timer(){
     QString gameName = GetValueByGameID(m_gameId , "gameExeName");
     RecordGameInfo *recordInfos1 = RecordGameInfo::GetInstance();
     if(isUpdate() ){
-        addLogToEdit(UI_INFO ,  "pushStreamer is updating!");
+        LOG_INFO( "pushStreamer is updating!");
         recordInfos1->RecordInfo(1);
     }
     QString  testStr = WSServiceTransferSignStringEx(m_deviceNo , m_sessionId , m_gameId ,gameName);
     emit m_cloudGameServiceIterator->Send(testStr);
-    addLogToEdit(UI_INFO , QString("send GameReportDeviceState status: %1").arg(testStr));
+    LOG_INFO(QString("send GameReportDeviceState status: %1").arg(testStr));
 }
 
 
@@ -1700,7 +1677,7 @@ bool CloudStreamer::isUpdate(){
     DealIniFile  streamConfig;
     QString executePath = QCoreApplication::applicationDirPath();
     if(executePath.isEmpty()){
-        addLogToEdit(UI_ERROR , "executePath should be empty!");
+        LOG_ERROR( "executePath should be empty!");
     }
     if(0 == streamConfig.OpenFile(executePath + "//streamConfig.ini")){
         QString str = streamConfig.GetValue("streamConfig" , "isUpdate").toString();
@@ -1714,8 +1691,8 @@ bool CloudStreamer::isUpdate(){
 }
 
 void CloudStreamer::StartGameCallback(QString data , StartGameModel model){
-    addLogToEdit(UI_INFO ,  "enter StartGameCallback  !");
-    addLogToEdit(UI_INFO , data);
+    LOG_INFO("enter StartGameCallback  !");
+    LOG_INFO(data);
     try{
         if(!data.isEmpty()){
             Json::Reader reader;
@@ -1723,7 +1700,7 @@ void CloudStreamer::StartGameCallback(QString data , StartGameModel model){
             if (reader.parse(data.toStdString(), root)){
                 QString gameId = root["gameId"].asCString();
                 if(isUpdate()){
-                    addLogToEdit(UI_INFO ,  "pushStreamer is updating!");
+                    LOG_INFO("pushStreamer is updating!");
                     RecordGameInfo *recordInfos1 = RecordGameInfo::GetInstance();
                     recordInfos1->RecordInfo(1);
                     QString gameName = GetValueByGameID(gameId , "gameExeName");
@@ -1789,7 +1766,7 @@ void CloudStreamer::StartGameCallback(QString data , StartGameModel model){
                 ///////////////
                 int ret =  -1;
                 if(serverUrl.isEmpty()|| controlUrl.isEmpty() || port.isEmpty() || roomId.isEmpty()|| gameId.isEmpty() || keyboardLoginParams.isEmpty()){
-                    addLogToEdit(UI_ERROR , "StartGameCallback json param format failure!");
+                    LOG_ERROR("StartGameCallback json param format failure!");
                     throw GameDealExeception("StartGameCallback json param format failure!" , -2);
                     //return ;
                 }
@@ -1806,7 +1783,7 @@ void CloudStreamer::StartGameCallback(QString data , StartGameModel model){
                                                capmode, vol, this]{
                     int ret = closepush(roomId.toLocal8Bit().data() , serverUrl.toLocal8Bit().data());
                     if(!ret){
-                        addLogToEdit(UI_ERROR ,  "close stream failure!\n");
+                        LOG_ERROR("close stream failure!\n");
                         throw GameDealExeception("closepush failure!" , -3);
                     }
 
@@ -1814,10 +1791,10 @@ void CloudStreamer::StartGameCallback(QString data , StartGameModel model){
                                bitrate.toInt(),deadline.toInt() , cpuused.toInt(),x.toInt(),
                                y.toInt(), mode.toInt(), capmode.toInt(), vol.toInt());
                     if(!ret){
-                        addLogToEdit(UI_ERROR , "push stream failure!\n");
+                        LOG_ERROR("push stream failure!\n");
                         throw GameDealExeception("push stream failure!", -4);
                     }
-                    addLogToEdit(UI_INFO , "push stream success!\n");
+                    LOG_INFO("push stream success!\n");
                 });
                 m_pushStreamerFunc();
                 /////////////
@@ -1825,7 +1802,7 @@ void CloudStreamer::StartGameCallback(QString data , StartGameModel model){
                 m_startGameFunc = std::bind([gameId , startGameParams,this ,  data](int forceValue){
                     QString startGameParamsEx = startGameParams;
                     if(gameId.isEmpty()  || startGameParamsEx.isEmpty()){
-                        addLogToEdit(UI_INFO , "gameId or  startGameParamsEx is empty!\n");
+                        LOG_INFO("gameId or  startGameParamsEx is empty!\n");
                     }else{
                         if(0 == startGameParamsEx.compare("null"));{
                             startGameParamsEx = "";
@@ -1878,7 +1855,7 @@ void CloudStreamer::StartGameCallback(QString data , StartGameModel model){
                     ////start the thread protect gst-launch-1.0
                     StartProtectGstLaunch();
                 }
-                addLogToEdit(UI_INFO , "keyBoard connection finish!\n");
+                LOG_INFO("keyBoard connection finish!\n");
                 //////////////////set the Delay bubble to report StartGame result
             }
         }
@@ -1916,7 +1893,7 @@ void CloudStreamer::on_changeCloudStreamerStatue(QString statusContent){
  bool   CloudStreamer::StartGameByGameId(QString gameId, QString startGameParams){
      if(!gameId.isEmpty()){
          QString gamePath = GetGamePathByID(gameId);
-         addLogToEdit(UI_INFO , "gamePath is parepar start!\n");
+         LOG_INFO( "gamePath is parepar start!\n");
          QString params = "start;";
          std::string  strTemp = gamePath.toStdString();
          vector<string> AllStr = split(strTemp , "&&");
@@ -1930,7 +1907,7 @@ void CloudStreamer::on_changeCloudStreamerStatue(QString statusContent){
          //params += "\"";
          QString appPath = QCoreApplication::applicationDirPath();
          QString str11 = appPath + "/" + g_cloudPathBat;
-         addLogToEdit(UI_INFO , QString("%1 startgame exe=%1").arg(g_cloudPathBat).arg(params));
+         LOG_INFO(QString("%1 startgame exe=%1").arg(g_cloudPathBat).arg(params));
          if(!gamePath.isEmpty()){
              bool ret = false;
              QStringList paramList= params.split(";");
@@ -1942,13 +1919,13 @@ void CloudStreamer::on_changeCloudStreamerStatue(QString statusContent){
                 ExecuteOutterScript(str11.toLocal8Bit().data() , paramList);
              }
              if(ret){
-                  addLogToEdit(UI_INFO , QString("gamePath=  %1 gameId start success!\n").arg(gamePath));
+                  LOG_INFO(QString("gamePath=  %1 gameId start success!\n").arg(gamePath));
                   return true;
              }else{
-                  addLogToEdit(UI_INFO , QString("gamePath= %1 gameId start failure!\n").arg(gamePath));
+                  LOG_INFO(QString("gamePath= %1 gameId start failure!\n").arg(gamePath));
              }
          }else{
-             addLogToEdit(UI_INFO , "gamePath is empty!\n");
+             LOG_INFO("gamePath is empty!\n");
          }
      }
      return false;
@@ -2008,13 +1985,13 @@ QString CloudStreamer::GetGamePathByID(QString gameId){
         DealIniFile  streamConfig;
         QString executePath = QCoreApplication::applicationDirPath();
         ///路径是否合法
-        addLogToEdit(UI_INFO ,  QString("executePath:%1  gameId=%2!").arg(executePath).arg(gameId));
+        LOG_INFO(QString("executePath:%1  gameId=%2!").arg(executePath).arg(gameId));
         if(!executePath.isEmpty()){
             if(0 == streamConfig.OpenFile(executePath + "/cloudGameConfig.ini")){
                 /////////////
                 ///////
                 QString path = streamConfig.GetValue("id" , gameId , "path").toString();
-                addLogToEdit(UI_INFO ,  QString("gamePath :%1  gameId=%2!").arg(path).arg(gameId));
+                LOG_INFO(QString("gamePath :%1  gameId=%2!").arg(path).arg(gameId));
                 if(!path.isEmpty()){
                     return  path;
                 }
@@ -2046,7 +2023,7 @@ QString CloudStreamer::GetGameStopByID(QString gameId){
 }
 
 void CloudStreamer::StopGameCallback(QString data){
-    addLogToEdit(UI_INFO ,  "enter StopGameCallback  !");
+    LOG_INFO("enter StopGameCallback  !");
     QString gameName = GetValueByGameID(m_gameId , "gameExeName");
     RecordGameInfo *recordInfos1 = RecordGameInfo::GetInstance();
     recordInfos1->RecordInfo(m_gameId , 0);
@@ -2065,7 +2042,7 @@ void CloudStreamer::StopGameCallback(QString data){
                     if(!gamePath.isEmpty()){
                         KillGameByName(gamePath);
                         ActiveReportGameStatus();
-                        addLogToEdit(UI_INFO , "game stop success!\n");
+                        LOG_INFO( "game stop success!\n");
                     }
                 }
            }
@@ -2081,18 +2058,18 @@ void CloudStreamer::StopGameCallback(QString data){
            ///////////////https://124.71.159.87:4443/
            int ret =  -1;
            if(serverUrl.isEmpty()|| controlUrl.isEmpty() || port.isEmpty()){
-               addLogToEdit(UI_ERROR ,  "StopGameCallback  param format failure!");
+               LOG_INFO("StopGameCallback  param format failure!");
                return ;
            }
            ///
            if(gameId.isEmpty()){
-                addLogToEdit(UI_INFO , "gameId or  startGameParams is empty!\n");
+                LOG_INFO("gameId or  startGameParams is empty!\n");
            }
            QString gamePath = GetValueByGameID(m_gameId , "gameExeName");//GetGameStopByID(gameId);
            if(!gamePath.isEmpty()){
                KillGameByName(gamePath);
                ActiveReportGameStatus();
-               addLogToEdit(UI_INFO , "game stop success!\n");
+               LOG_INFO("game stop success!\n");
            }
         }
     }
@@ -2208,7 +2185,7 @@ QString  WSServiceTransferSignStringEx(QString deviceNo, QString sessionId , QSt
     RecordGameInfo *recordInfos1 = RecordGameInfo::GetInstance();
     gameIsRunning = recordInfos1->GetGameStatus();
     data["status"] = gameIsRunning ? 1 : 0;
-    data["pushVersion"] = "1.0.1.8";
+    data["pushVersion"] = "1.0.1.9";
     //////////////////
     root["data"] = data;
     ////////
@@ -2223,7 +2200,7 @@ QString  WSServiceTransferSignStringEx(QString deviceNo, QString sessionId , QSt
 void CloudStreamer::SignInWsService(){
     if(m_cloudGameServiceIterator.get()){
         QString  signInStr =  WSServiceTransferSignString(m_deviceNo);
-        addLogToEdit(UI_INFO , QString("SignInWsService success %1").arg(signInStr));
+        LOG_INFO(QString("SignInWsService success %1").arg(signInStr));
 
 
         emit m_cloudGameServiceIterator->Send(signInStr);
@@ -2236,7 +2213,7 @@ void CloudStreamer::ActiveReportGameStatus(){
     QString gameName = GetValueByGameID(m_gameId , "gameExeName");
     QString  testStr = WSServiceTransferSignStringEx(m_deviceNo , m_sessionId , m_gameId ,gameName);
     emit m_cloudGameServiceIterator->Send(testStr);
-    addLogToEdit(UI_INFO , QString("send GameReportDeviceState status: %1").arg(testStr));
+    LOG_INFO( QString("send GameReportDeviceState status: %1").arg(testStr));
 }
 
 void CloudStreamer::SignInCloudGameCallback(QString paramData){
@@ -2257,10 +2234,10 @@ void CloudStreamer::SignInCloudGameCallback(QString paramData){
 //            if(m_cloudGameServiceIterator.get()){
 //                emit m_cloudGameServiceIterator->Send(QString("%1").arg(rootJsonStr.c_str()));
 //            }
-            addLogToEdit(UI_INFO , QString("SignInCloudGameCallback success %1!").arg(paramData));
+            LOG_INFO( QString("SignInCloudGameCallback success %1!").arg(paramData));
         }
     }else{
-        addLogToEdit(UI_ERROR , "SignInCloudGameCallback parse json  failure !");
+        LOG_INFO("SignInCloudGameCallback parse json  failure !");
     }
 
     //StartGameByGameId("gmly2" , "");
@@ -2291,7 +2268,7 @@ QString CloudStreamer::ModifiyStartParams(QString framerate, QString bitrate,QSt
 
 void CloudStreamer::ChangeResolutionCallback(QString paramData){
     if(paramData.isEmpty()){
-        addLogToEdit(UI_ERROR , "ChangeResolutionCallback paramData is Empty!");
+        LOG_ERROR("ChangeResolutionCallback paramData is Empty!");
         return;
     }
     Json::Reader reader;
@@ -2320,7 +2297,7 @@ void CloudStreamer::ChangeResolutionCallback(QString paramData){
         }
 
     }else{
-        addLogToEdit(UI_ERROR , "ChangeResolutionCallback parse json  failure !");
+        LOG_ERROR("ChangeResolutionCallback parse json  failure !");
         return;
     }
     QString newStartParams ="";
@@ -2383,7 +2360,7 @@ void CloudStreamer::MessageFeedBack(QString msgType ,  QString resultCode , QStr
 
 
 void    CloudStreamer::StartReportStatusTimer(){
-    addLogToEdit(UI_INFO , QString("g_reportGameStatusInteral =!").arg(g_reportGameStatusInteral));
+    LOG_INFO(QString("g_reportGameStatusInteral =!").arg(g_reportGameStatusInteral));
     m_gameStatusTimer = new QTimer(0);
     m_gameStatusTimer->setInterval(g_reportGameStatusInteral);
 
@@ -2424,7 +2401,7 @@ void CloudStreamer::StartAutoUpdate(){
     QString updateScript = "";
     QString executePath = QCoreApplication::applicationDirPath();
     if(executePath.isEmpty()){
-        addLogToEdit(UI_ERROR , "executePath should be empty!");
+        LOG_ERROR("executePath should be empty!");
         return;
     }
     updateScript = executePath + g_autoUpdateScript;
@@ -2437,7 +2414,7 @@ void CloudStreamer::CloseAutoUpdate(){
     QString updateScript = "";
     QString executePath = QCoreApplication::applicationDirPath();
     if(executePath.isEmpty()){
-        addLogToEdit(UI_ERROR , "executePath should be empty!");
+        LOG_ERROR("executePath should be empty!");
         return;
     }
     updateScript = executePath + g_autoUpdateScript;
@@ -2446,14 +2423,14 @@ void CloudStreamer::CloseAutoUpdate(){
 }
 
 void CloudStreamer::RecordSignalCallBack(QString flagStr , QString logStr){
-    addLogToEdit(flagStr, logStr);
+    LOG_INFO(QString("%1  %2").arg(flagStr).arg(logStr));
 }
 
 void CloudStreamer::ParseMessageCallback(QString data){
     Json::Reader reader;
     Json::Value root;
     root["haitianyise"]="just for test";
-    addLogToEdit("Parsemsg:" , data);
+    LOG_INFO(QString("Parsemsg:%1" ).arg(data));
     if (reader.parse(data.toStdString(), root)){
         bool exsit = root.isMember("type");
         if(exsit){
@@ -2461,7 +2438,7 @@ void CloudStreamer::ParseMessageCallback(QString data){
             std::string returnCodeStr = root["code"].asCString();
             int returnCode = atoi(returnCodeStr.c_str());
             if( 0  != returnCode){
-                addLogToEdit(UI_ERROR , "json format failure  code is not equal 0!");
+                LOG_ERROR("json format failure  code is not equal 0!");
                 return ;
             }
             if(!msgType.empty()){
@@ -2497,7 +2474,7 @@ void CloudStreamer::ParseMessageCallback(QString data){
                        if(m_changeResolution.get()){
                            m_changeResolution->detach();
                        }
-                       addLogToEdit(UI_INFO , "ChangeResolution message!");
+                       LOG_INFO("ChangeResolution message!");
                    }
                 }
             }
@@ -2513,7 +2490,7 @@ void CloudStreamer::ParseMessageCallback(QString data){
             }
         }
     }else{
-         addLogToEdit(UI_ERROR , "ParseMessageCallback parse json  failure !");
+         LOG_ERROR("ParseMessageCallback parse json  failure !");
     }
 }
 
