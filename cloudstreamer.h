@@ -15,55 +15,57 @@ using namespace CloudGameServiceIteratorSpace;
 #include <map>
 #include <QTimer>
 #include <QtWidgets>
+#include <string>
 namespace Ui {
 class CloudStreamer;
 }
 
-namespace CloudStreamerSpace{
-    struct PushStreamerParams{
-      QString m_serverUrl;
-      QString m_domain;
-      QString m_roomId;
-      QString m_framerate;
-      QString m_bitrate;
-      QString m_deadline;
-      QString m_cpuused;
-      QString m_x;
-      QString m_y;
-      QString m_mode;
-      QString m_capmode;
-      QString m_vol;
-      void SetValue(QString serverUrl , QString domain , QString roomId , QString framerate, QString bitrate ,QString deadline , QString cpuused ,QString x , QString y
-                    ,QString mode, QString capmode , QString vol){
-          m_serverUrl = serverUrl;
-          m_domain = domain;
-          m_roomId = roomId;
-          m_framerate =framerate ;
-          m_bitrate = bitrate;
-          m_deadline = deadline;
-          m_cpuused = cpuused;
-          m_x = x;
-          m_y = y;
-          m_mode = mode;
-          m_capmode = capmode;
-          m_vol = vol;
-      }
-    };
+    typedef struct _PushStreamerParams{
+        void Set(QString serverUrl , QString domain , QString roomId , QString framerate, QString bitrate ,QString deadline , QString cpuused ,QString x , QString y
+                      ,QString mode, QString capmode , QString vol){
+            m_serverUrl= serverUrl.toStdString();
+            m_domain = domain.toStdString();
+            m_roomId = roomId.toStdString();
+            m_framerate =framerate.toStdString();
+            m_bitrate = bitrate.toStdString();
+            m_deadline = deadline.toStdString();
+            m_cpuused = cpuused.toStdString();
+            m_x = x.toStdString();
+            m_y = y.toStdString();
+            m_mode = mode.toStdString();
+            m_capmode = capmode.toStdString();
+            m_vol = vol.toStdString();
+        }
+      public:
+          std::string m_serverUrl;
+          std::string m_domain;
+          std::string m_roomId;
+          std::string m_framerate;
+          std::string m_bitrate;
+          std::string m_deadline;
+          std::string m_cpuused;
+          std::string m_x;
+          std::string m_y;
+          std::string m_mode;
+          std::string m_capmode;
+          std::string m_vol;
+    }PushStreamerParams;
 
-    struct StartGameParams{
-        QString m_gameId;
-        QString m_startGameParams;
-        QString m_data;
+    Q_DECLARE_METATYPE(PushStreamerParams)
+
+    typedef struct _StartGameParams{
+        std::string m_gameId;
+        std::string m_startGameParams;
+        std::string m_data;
         int m_force;
         void SetValue(QString gameId , QString startGameParams , QString data , int force){
-            m_gameId = gameId;
-            m_startGameParams = startGameParams;
-            m_data = data;
+            m_gameId = gameId.toStdString();
+            m_startGameParams = startGameParams.toStdString();
+            m_data = data.toStdString();
             m_force = force;
         }
-    };
-}
-
+    }StartGameParams;
+    Q_DECLARE_METATYPE(StartGameParams)
 using namespace DealIniFileSpace;
 using namespace KeyValueTransformtNamespace;
 using namespace WebSocketNamsSpace;
@@ -170,8 +172,8 @@ signals:
     void InputLog(QString flagStr,QString logStr);
 protected:
     typedef CloudGameServiceIteratorSpace::CloudGameServiceIterator  CloudGameServiceIterator;
-    typedef CloudStreamerSpace::PushStreamerParams  PushStreamerParams;
-    typedef CloudStreamerSpace::StartGameParams   StartGameParams;
+    //typedef CloudStreamerSpace::PushStreamerParams  PushStreamerParams;
+    //typedef CloudStreamerSpace::StartGameParams   StartGameParams;
 public:
     void BindServiceIterator(std::shared_ptr<CloudGameServiceIterator>  iterator);
     std::shared_ptr<CloudStreamer> GetPtr();

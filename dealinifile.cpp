@@ -10,7 +10,7 @@ DealIniFile::DealIniFile()
 
 DealIniFile::~DealIniFile(){
     if(m_iniFileParse.get()){
-        m_iniFileParse->sync();
+        //m_iniFileParse->sync();
         m_iniFileParse.reset();
     }else{
         LOG_INFO("~DealIniFile  m_iniFileParse is NULL!");
@@ -73,7 +73,7 @@ bool  DealIniFile::SetValue(QString topic , QString key , QString value){
             QString keyStr= topic + "/";
             keyStr += key;
             m_iniFileParse->setValue(keyStr , value.toLocal8Bit().data());
-            m_iniFileParse->sync();
+            //m_iniFileParse->sync();
             return true;
         }
     }

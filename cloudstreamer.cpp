@@ -1185,7 +1185,22 @@ void  CloudStreamer::ProtectGstLaunch(){
                 LOG_INFO("gst-launch-1.0 is quit!\n");
                 if(!appPath.isEmpty()){
                     //std::unique_lock<std::mutex> lock(m_gstLaunchMutex);
-                    //m_pushStreamerFunc();
+                    if(!m_pushStreamerParams.m_serverUrl.empty()){
+                            //m_pushStreamerFunc();
+                        PushStreamerAction(m_pushStreamerParams.m_serverUrl.c_str(), \
+                                           m_pushStreamerParams.m_domain.c_str(), \
+                                           m_pushStreamerParams.m_roomId.c_str() ,\
+                                           m_pushStreamerParams.m_framerate.c_str(),\
+                                           m_pushStreamerParams.m_bitrate.c_str() ,\
+                                           m_pushStreamerParams.m_deadline.c_str(),\
+                                           m_pushStreamerParams.m_cpuused.c_str(),\
+                                           m_pushStreamerParams.m_x.c_str(),\
+                                           m_pushStreamerParams.m_y.c_str(), \
+                                           m_pushStreamerParams.m_mode.c_str(),\
+                                           m_pushStreamerParams.m_capmode.c_str(), \
+                                           m_pushStreamerParams.m_vol.c_str());
+
+                    }
                 }else{
                     LOG_ERROR("gst-launch-1.0  appPath is empty!\n");
                 }
@@ -1786,9 +1801,8 @@ void CloudStreamer::StartGameCallback(QString data , StartGameModel model){
                 serverUrl +=  ":";
                 serverUrl += "4443";
                 serverUrl += "/";
-                //std::unique_lock<std::mutex> lock(m_gstLaunchMutex);
-                PushStreamerAction(serverUrl,domain,roomId ,framerate,bitrate ,deadline,cpuused,x,y,mode,
-                                   capmode, vol);
+                /////////////////////
+                PushStreamerAction(serverUrl,domain,roomId ,framerate,bitrate ,deadline,cpuused,x,y,mode,capmode, vol);
                 /////////////
                 ////////loginParam port replace to deviceNo
                 StartGameAction(gameId , startGameParams , data, force);
@@ -1809,11 +1823,9 @@ void CloudStreamer::StartGameCallback(QString data , StartGameModel model){
 }
 
 
-int  CloudStreamer::PushStreamerAction(QString serverUrl , QString domain , QString roomId , QString framerate, QString bitrate ,QString deadline , QString cpuused ,QString x , QString y
-                        ,QString mode, QString capmode , QString vol){
-        m_pushStreamerParams.SetValue(serverUrl,domain,roomId ,framerate,bitrate ,deadline,cpuused,x,y,mode,
-                                  capmode, vol);
-
+int  CloudStreamer::PushStreamerAction(QString serverUrl , QString domain , QString roomId , QString framerate, QString bitrate ,QString deadline , QString cpuused ,QString x , QString y,QString mode, QString capmode , QString vol)
+{
+        m_pushStreamerParams.Set(serverUrl,domain,roomId ,framerate,bitrate ,deadline,cpuused,x,y,mode,capmode, vol);
 //                m_pushStreamerFunc = std::bind([serverUrl,domain,roomId ,framerate,bitrate ,deadline,cpuused,x,y,mode,
 //                                               capmode, vol, this]{
         int ret = closepush(roomId.toLocal8Bit().data() , serverUrl.toLocal8Bit().data());
