@@ -36,6 +36,10 @@ class CloudStreamer;
             m_capmode = capmode.toStdString();
             m_vol = vol.toStdString();
         }
+        std::string LogStr(){
+            return  m_serverUrl +"," + m_domain +"," + m_roomId +"," + m_framerate + "," + m_bitrate +"," + m_deadline + "," + m_cpuused + "," + m_x + "," + \
+                     m_y + "," + m_mode + "," + m_capmode + "," + m_vol;
+        }
       public:
           std::string m_serverUrl;
           std::string m_domain;
@@ -247,6 +251,8 @@ private:
     int  StartGameAction(QString gameId , QString startGameParams , QString data , int force);
 
     int  StartKeyboardAction(QString gameId , QString controlUrl , QString keyboardLoginParams);
+
+    void LastGaspGoalPushStreamer();
 public:
     void  addLogToEdit(QString flagStr , QString logStr);//添加一条日志到日志
 protected:

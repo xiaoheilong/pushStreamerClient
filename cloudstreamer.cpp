@@ -53,6 +53,7 @@ const QString g_gstLaunchName = "gst-launch-1.0.exe";
 const QString g_autoUpdateScript= "/updater/interface.bat";
 const QString g_keyBoardIniTopic="ValueName";
 QString g_cloudPathBat="executeFile.bat";
+QString g_closeStreamer="/gstreamer/1.0/msvc_x86_64/bin/killStreamer.bat";
 //推流和键盘默认配置文件在 streamConfig.ini文件中
 //////云游戏默认配置文件在   cloudGameConfig.ini文件中
 /// ////////////////
@@ -1080,6 +1081,7 @@ CloudStreamer::CloudStreamer(QWidget *parent) :
     ClearFunctionParams();
     //this->showMinimized();
     LOG_INFO(QString("CloudStreamer::CloudStreamer"));
+    LastGaspGoalPushStreamer();
 }
 
 
@@ -1187,6 +1189,8 @@ void  CloudStreamer::ProtectGstLaunch(){
                     //std::unique_lock<std::mutex> lock(m_gstLaunchMutex);
                     if(!m_pushStreamerParams.m_serverUrl.empty()){
                             //m_pushStreamerFunc();
+                        QString logStr =QString("ProtectGstLaunch  params ---->");
+                        LOG_INFO(QString("%1:%2").arg(logStr).arg(m_pushStreamerParams.LogStr().c_str()));
                         PushStreamerAction(m_pushStreamerParams.m_serverUrl.c_str(), \
                                            m_pushStreamerParams.m_domain.c_str(), \
                                            m_pushStreamerParams.m_roomId.c_str() ,\
@@ -1712,10 +1716,24 @@ bool CloudStreamer::isUpdate(){
     return false;
 }
 
+void CloudStreamer::LastGaspGoalPushStreamer(){
+    QString appPath = QCoreApplication::applicationDirPath();
+    QString str11 = appPath + g_closeStreamer;
+    QProcess process;
+    process.setProgram("cmd");
+    QStringList argument;
+    argument<<"/c"<< "taskkill  /IM gst-launch-1.0.exe  /F" ;//"start /min"<<str11.toLocal8Bit().data() ;
+    process.setArguments(argument);
+    process.start();
+    //process.waitForStarted(); //等待程序启动
+    process.waitForFinished();//等待程序关闭
+}
+
 void CloudStreamer::StartGameCallback(QString data , StartGameModel model){
     LOG_INFO("enter StartGameCallback  !");
     LOG_INFO(data);
     ClearFunctionParams();
+    LastGaspGoalPushStreamer();
     try{
         if(!data.isEmpty()){
             Json::Reader reader;
@@ -1736,6 +1754,7 @@ void CloudStreamer::StartGameCallback(QString data , StartGameModel model){
                     m_gameId = recordInfos1->GetGameId();
                     if(0 != m_gameId.compare(gameId) && !m_gameId.isEmpty()){
                         QString gameName1 = GetValueByGameID(m_gameId , "gameExeName");
+                        LOG_INFO(QString("kill the laste game:%1").arg(gameName1));
                         KillGameByName(gameName1);
                     }else{
 
@@ -1801,12 +1820,14 @@ void CloudStreamer::StartGameCallback(QString data , StartGameModel model){
                 serverUrl +=  ":";
                 serverUrl += "4443";
                 serverUrl += "/";
-                /////////////////////
-                PushStreamerAction(serverUrl,domain,roomId ,framerate,bitrate ,deadline,cpuused,x,y,mode,capmode, vol);
-                /////////////
                 ////////loginParam port replace to deviceNo
                 StartGameAction(gameId , startGameParams , data, force);
                 /////////////
+
+                /////////////////////
+                PushStreamerAction(serverUrl,domain,roomId ,framerate,bitrate ,deadline,cpuused,x,y,mode,capmode, vol);
+                /////////////
+
                 /////////
                 if(NORMAL_MODEL == model){
                     StartKeyboardAction(gameId , controlUrl , keyboardLoginParams);
@@ -1833,7 +1854,8 @@ int  CloudStreamer::PushStreamerAction(QString serverUrl , QString domain , QStr
             LOG_ERROR("close stream failure!\n");
             return -3;
         }
-
+        QString logStr =QString("pushStream  params ---->");
+        LOG_INFO(QString("%1:%2").arg(logStr).arg(m_pushStreamerParams.LogStr().c_str()));
         ret = push(roomId.toLocal8Bit().data(),serverUrl.toLocal8Bit().data(), domain.toLocal8Bit().data(),framerate.toInt() ,
                    bitrate.toInt(),deadline.toInt() , cpuused.toInt(),x.toInt(),
                    y.toInt(), mode.toInt(), capmode.toInt(), vol.toInt());
@@ -1855,6 +1877,7 @@ int  CloudStreamer::StartGameAction(QString gameId , QString startGameParams , Q
             LOG_INFO("gameId or  startGameParamsEx is empty!\n");
         }else{
             if(0 == startGameParamsEx.compare("null"));{
+                LOG_INFO(QString("%1 need restart gst-launch-1.0.exe").arg(gameId));
                 startGameParamsEx = "";
                 ActiveReportGameStatus();
             }
@@ -1863,10 +1886,12 @@ int  CloudStreamer::StartGameAction(QString gameId , QString startGameParams , Q
         gameIsRunning = GameIsAreadlyRunning(gameId);
         if(gameIsRunning){
             if(/*forceValue*/force > 0 ){
+                LOG_INFO(QString("%1 been force kill!").arg(gameId));
                 KillAreadlyRunningGame(gameId);
                 StartGameByGameId(gameId , startGameParamsEx );
             }
         }else{
+            LOG_INFO(QString("%1 is not running ,should been restart now!").arg(gameId));
             StartGameByGameId(gameId , startGameParamsEx);
         }
         RecordGameInfo *recordInfos1 = RecordGameInfo::GetInstance();
@@ -2067,13 +2092,32 @@ QString CloudStreamer::GetGameStopByID(QString gameId){
 
 void CloudStreamer::StopGameCallback(QString data){
     LOG_INFO("enter StopGameCallback  !");
+    LastGaspGoalPushStreamer();
     QString gameName = GetValueByGameID(m_gameId , "gameExeName");
     RecordGameInfo *recordInfos1 = RecordGameInfo::GetInstance();
     recordInfos1->RecordInfo(m_gameId , 0);
     QString  testStr = WSServiceTransferSignStringEx(m_deviceNo , m_sessionId , m_gameId ,gameName);
     StopProtectGstLaunch();
     emit m_cloudGameServiceIterator->Send(testStr);
-    emit ui->pushButton_3->clicked();
+    //emit ui->pushButton_3->clicked();
+    //////////close push Streamer and  keyboard affair
+//    QString roomName = m_pushStreamerParams.m_roomId;
+//    QString pushServer = ui->lineEdit->text();
+//    std::string roomNameStr = roomName.toStdString();
+//    std::string pushServerStr = pushServer.toStdString();
+    if(UI_MODE::DEFAULT_MODE == m_mode || UI_MODE::ONLY_PUSH_STREAMER == m_mode){
+        LOG_INFO(QString("StopGameCallback roomId = %1   serverUrl= %2 !").arg(m_pushStreamerParams.m_roomId.c_str()).arg(m_pushStreamerParams.m_serverUrl.c_str()));
+        closepush(const_cast<char*>(m_pushStreamerParams.m_roomId.c_str()),const_cast<char*> (m_pushStreamerParams.m_serverUrl.c_str()));
+    }
+    ///////
+    if(UI_MODE::DEFAULT_MODE == m_mode || UI_MODE::ONLY_KEY_BOARD == m_mode){
+        if(m_keyBoardThread.get()){
+            m_keyBoardThread->stop();
+            disconnect(m_keyBoardThread.get() , SIGNAL(RecordSignal(QString , QString)) , this , SLOT(RecordSignalCallBack(QString , QString )));
+            m_keyBoardThread.reset();
+        }
+    }
+    ////////
     if(!data.isEmpty()){
         Json::Reader reader;
         Json::Value root;
@@ -2228,7 +2272,7 @@ QString  WSServiceTransferSignStringEx(QString deviceNo, QString sessionId , QSt
     RecordGameInfo *recordInfos1 = RecordGameInfo::GetInstance();
     gameIsRunning = recordInfos1->GetGameStatus();
     data["status"] = gameIsRunning ? 1 : 0;
-    data["pushVersion"] = "1.0.1.9";
+    data["pushVersion"] = "1.0.1.10";
     //////////////////
     root["data"] = data;
     ////////
@@ -2348,13 +2392,14 @@ void CloudStreamer::ChangeResolutionCallback(QString paramData){
     if(!newStartParams.isEmpty()){
         RecordGameInfo *recordInfos = RecordGameInfo::GetInstance();
         int gameStatus = recordInfos->GetGameStatus();
-        QString rootJsonStr = recordInfos->GetGameInfo();
+        //QString rootJsonStr = recordInfos->GetGameInfo();
         if(gameStatus){
             ///////game is not close normally , then recovery the normal show
             ///if the game's exe is running then show the gameWindow top modal
             ///if the game's exe is doesn't running , then restart the game's exe
+            LOG_INFO("start ChangeResolutionCallback !");
             StopWorkThread(m_startGameThread);
-            m_startGameThread = std::make_shared<std::thread>(&CloudStreamer::StartGameCallback, this , rootJsonStr , ONLY_PUSHSTREAMR);
+            m_startGameThread = std::make_shared<std::thread>(&CloudStreamer::StartGameCallback, this , newStartParams , ONLY_PUSHSTREAMR);
             if(m_startGameThread.get()){
                 m_startGameThread->detach();
             }
@@ -2397,6 +2442,7 @@ void CloudStreamer::MessageFeedBack(QString msgType ,  QString resultCode , QStr
         Json::FastWriter styled_write;
         std::string rootJsonStr = styled_write.write(root);
         QString result = rootJsonStr.c_str();
+        LOG_INFO(QString("MessageFeedBack: %1 ").arg(result));
         emit m_cloudGameServiceIterator->Send(result);
     }
 }
