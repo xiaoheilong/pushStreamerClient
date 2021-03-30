@@ -1072,7 +1072,7 @@ CloudStreamer::CloudStreamer(QWidget *parent) :
     connect(this , SIGNAL(InputLog(QString, QString)) , this , SLOT(on_inputLog(QString, QString)));
     ///////
     StartAutoUpdate();
-    InitSystemTray();
+    //InitSystemTray();
     setWindowFlags(Qt::WindowCloseButtonHint);
     //////////从配置文件中读取上一次的gameId
     RecordGameInfo* recordInfos1 = RecordGameInfo::GetInstance();
@@ -1117,7 +1117,7 @@ CloudStreamer::~CloudStreamer()
     StopWorkThread(m_changeResolution);
     disconnect(this , SIGNAL(InputLog(QString, QString)) , this , SLOT(on_inputLog(QString, QString)));
     CloseAutoUpdate();
-    UInitSystemTray();
+    //UInitSystemTray();
     //////////
     RecordGameInfo::ReleaseInstance();
     /////////
@@ -1310,11 +1310,11 @@ void  CloudStreamer::changeEvent(QEvent * event){
     if(event->type()!=QEvent::WindowStateChange) {
         return;
     }
-    Qt::WindowStates states = this->windowState();
-    if(  states ==Qt::WindowMinimized  || states ==Qt::WindowNoState){
-        this->hide();
-        m_systray->show();
-    }
+//    Qt::WindowStates states = this->windowState();
+//    if(  states ==Qt::WindowMinimized  || states ==Qt::WindowNoState){
+//        this->hide();
+//        m_systray->show();
+//    }
 }
 
 int CloudStreamer::OnSystemTrayClicked(QSystemTrayIcon::ActivationReason reason)
@@ -1331,11 +1331,11 @@ int CloudStreamer::OnSystemTrayClicked(QSystemTrayIcon::ActivationReason reason)
 
 
 int CloudStreamer::OnExit(){
-    if(m_systray){
-        m_systray->deleteLater();
-    }else{
-        LOG_INFO("OnExit  m_systray is null!");
-    }
+//    if(m_systray){
+//        m_systray->deleteLater();
+//    }else{
+//        LOG_INFO("OnExit  m_systray is null!");
+//    }
     /////////////
     QuitForce(true);
     if(m_gameId.isEmpty()){
@@ -2272,7 +2272,7 @@ QString  WSServiceTransferSignStringEx(QString deviceNo, QString sessionId , QSt
     RecordGameInfo *recordInfos1 = RecordGameInfo::GetInstance();
     gameIsRunning = recordInfos1->GetGameStatus();
     data["status"] = gameIsRunning ? 1 : 0;
-    data["pushVersion"] = "1.0.1.10";
+    data["pushVersion"] = "1.0.1.11";
     //////////////////
     root["data"] = data;
     ////////
