@@ -841,6 +841,7 @@ void KeyBoardThread::MessageCallback(std::string message , int error){
         emit RecordSignal(UI_INFO , QString("keyboard/mouse msg:%1!").arg(message.c_str()));
         Json::Reader reader;
         Json::Value root;
+        root["init"]=123;//prevent the json  Deconstruction crash
         if (reader.parse(message, root))
         {
             std::string type = "";
@@ -1134,6 +1135,7 @@ void CloudStreamer::ClearFunctionParams(){
 
 int CloudStreamer::InitSystemTray(){
     //设置提示文字
+    return 0 ;
     m_systray = new QSystemTrayIcon(this);
     m_systray->setToolTip("CloudStreamer");
 
@@ -1160,6 +1162,7 @@ int CloudStreamer::InitSystemTray(){
 
 
 int CloudStreamer::UInitSystemTray(){
+    return 0;
     if(m_systray){
         delete m_systray;
         m_systray = NULL;
@@ -1738,6 +1741,7 @@ void CloudStreamer::StartGameCallback(QString data , StartGameModel model){
         if(!data.isEmpty()){
             Json::Reader reader;
             Json::Value root;
+            root["init"] = 123;
             if (reader.parse(data.toStdString(), root)){
                 QString gameId = root["gameId"].asCString();
                 if(isUpdate()){
@@ -2121,6 +2125,7 @@ void CloudStreamer::StopGameCallback(QString data){
     if(!data.isEmpty()){
         Json::Reader reader;
         Json::Value root;
+        root["init"] = 123;
         if (reader.parse(data.toStdString(), root)){
            if(root.isMember("isForce")){
                 int isForce = root["isForce"].asInt();
@@ -2272,7 +2277,7 @@ QString  WSServiceTransferSignStringEx(QString deviceNo, QString sessionId , QSt
     RecordGameInfo *recordInfos1 = RecordGameInfo::GetInstance();
     gameIsRunning = recordInfos1->GetGameStatus();
     data["status"] = gameIsRunning ? 1 : 0;
-    data["pushVersion"] = "1.0.1.11";
+    data["pushVersion"] = "1.0.1.12";
     //////////////////
     root["data"] = data;
     ////////
@@ -2309,6 +2314,7 @@ void CloudStreamer::SignInCloudGameCallback(QString paramData){
     }
     Json::Reader reader;
     Json::Value root;
+    root["init"]=123;
     if (reader.parse(paramData.toStdString(), root)){
         ////////////
         if(root.isMember("sessionId")){
@@ -2340,6 +2346,7 @@ QString CloudStreamer::ModifiyStartParams(QString framerate, QString bitrate,QSt
         if(!rootJsonStr.isEmpty()){
             Json::Reader reader;
             Json::Value root;
+            root["init"] = 123;
             if (reader.parse(rootJsonStr.toStdString(), root)){
                 root["framerate"] = framerate.toLocal8Bit().data();
                 root["bitrate"] = bitrate.toLocal8Bit().data();
@@ -2363,6 +2370,7 @@ void CloudStreamer::ChangeResolutionCallback(QString paramData){
     QString framerate = "";
     QString bitrate="";
     QString deadline="";
+    root["init"] = 123;
     if (reader.parse(paramData.toStdString(), root)){
         ////////////
         if(root.isMember("framerate")){
