@@ -3,18 +3,16 @@
 #include <QStringList>
 #include <QFile>
 namespace DealIniFileSpace{
-DealIniFile::DealIniFile()
+
+#define DeletePtr(ptr)  if(ptr){  delete ptr; ptr = NULL; }
+
+
+DealIniFile::DealIniFile():m_iniFileParse(NULL)
 {
-    m_iniFileParse.reset();
 }
 
 DealIniFile::~DealIniFile(){
-    if(m_iniFileParse.get()){
-        //m_iniFileParse->sync();
-        m_iniFileParse.reset();
-    }else{
-        LOG_INFO("~DealIniFile  m_iniFileParse is NULL!");
-    }
+    DeletePtr(m_iniFileParse);
 }
 
 
@@ -22,22 +20,20 @@ int DealIniFile::OpenFile(QString filePath){
     if(filePath.isEmpty()){
         return -1;
     }
-    if(m_iniFileParse.get()){
-        m_iniFileParse.reset();
-    }
+    DeletePtr(m_iniFileParse);
     if(!QFile::exists(filePath)){
         LOG_INFO(QString("DealIniFile::OpenFile %1 is not exist!").arg(filePath));
         return -1;
     }
-    m_iniFileParse = std::make_shared<QSettings>( filePath, QSettings::Format::IniFormat);
-    if(!m_iniFileParse.get()){
+    m_iniFileParse = new QSettings( filePath, QSettings::Format::IniFormat);
+    if(!m_iniFileParse){
         return -1;
     }
     return 0;
 }
 
 QVariant DealIniFile::GetValue(QString topic, QString key){
-    if(m_iniFileParse.get()){
+    if(m_iniFileParse){
         QString keyStr= topic + "/";
         keyStr += key;
         return m_iniFileParse->value(keyStr);
@@ -48,7 +44,7 @@ QVariant DealIniFile::GetValue(QString topic, QString key){
 
 QVariant DealIniFile::GetValue(QString key,QString keyValue , QString goalKey){
     if(!key.isEmpty() || !goalKey.isEmpty() ){
-        if(m_iniFileParse.get()){
+        if(m_iniFileParse){
              QStringList allKey = m_iniFileParse->childGroups();
              if(!allKey.isEmpty()){
                  for(int index = 0; index < allKey.size(); ++index){
@@ -69,11 +65,10 @@ QVariant DealIniFile::GetValue(QString key,QString keyValue , QString goalKey){
 
 bool  DealIniFile::SetValue(QString topic , QString key , QString value){
     if(!topic.isEmpty() && !key.isEmpty()){
-        if(m_iniFileParse.get()){
+        if(m_iniFileParse){
             QString keyStr= topic + "/";
             keyStr += key;
             m_iniFileParse->setValue(keyStr , value.toLocal8Bit().data());
-            //m_iniFileParse->sync();
             return true;
         }
     }

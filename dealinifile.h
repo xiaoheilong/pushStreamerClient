@@ -17,7 +17,7 @@ public:
     bool  SetValue(QString topic , QString key , QString value);
 
 private:
-    std::shared_ptr<QSettings> m_iniFileParse;
+    QSettings *m_iniFileParse;
 };
 }
 #endif // DEALINIFILE_H
