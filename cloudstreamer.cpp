@@ -2277,7 +2277,7 @@ QString  WSServiceTransferSignStringEx(QString deviceNo, QString sessionId , QSt
     RecordGameInfo *recordInfos1 = RecordGameInfo::GetInstance();
     gameIsRunning = recordInfos1->GetGameStatus();
     data["status"] = gameIsRunning ? 1 : 0;
-    data["pushVersion"] = "1.0.1.12";
+    data["pushVersion"] = "1.0.1.13";
     //////////////////
     root["data"] = data;
     ////////
