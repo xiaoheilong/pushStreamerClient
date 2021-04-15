@@ -58,7 +58,21 @@ QString g_closeStreamer="/gstreamer/1.0/msvc_x86_64/bin/killStreamer.bat";
 //////云游戏默认配置文件在   cloudGameConfig.ini文件中
 /// ////////////////
 ///
-
+BOOL CALLBACK SetTopWindowByProcessId(HWND hwnd,LPARAM lParam)
+{
+    DWORD lpdwProcessId;
+    GetWindowThreadProcessId(hwnd,&lpdwProcessId);
+    if(lpdwProcessId==lParam)
+    {
+        typedef    void    (WINAPI    *PROCSWITCHTOTHISWINDOW)    (HWND,    BOOL);
+        PROCSWITCHTOTHISWINDOW    SwitchToThisWindow;
+        HMODULE    hUser32    =    GetModuleHandle(L"user32");
+        SwitchToThisWindow    =    (    PROCSWITCHTOTHISWINDOW)GetProcAddress(hUser32,    "SwitchToThisWindow");
+        SwitchToThisWindow(hwnd , TRUE);
+        return FALSE;
+    }
+    return TRUE;
+}
 
 std::string ws2s(const std::wstring& ws)
 {
@@ -94,33 +108,28 @@ std::wstring s2ws(const std::string &s)
 }
 
 
-bool isProcessRunning(QString processName)
+int isProcessRunning(QString processName)
 {
-    PROCESSENTRY32 pe;
-        DWORD id = 0;
-        HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-        pe.dwSize = sizeof(PROCESSENTRY32);
-        if (!Process32First(hSnapshot, &pe))
-            //LogEx(UI_ERROR , "GetProcessidFromName Process32First is failure!");
-            return false;
-        while (1)
-        {
-            pe.dwSize = sizeof(PROCESSENTRY32);
-            if (Process32Next(hSnapshot, &pe) == FALSE) {
-                //LogEx(g_UI_ERROR, "GetProcessidFromName  result is false!");
-                break;
-            }
-            std::string path1 = processName.toStdString();
-            std::wstring path = s2ws(path1);
-            if (lstrcmp(pe.szExeFile, path.c_str()) == 0)
-            {
-                id = pe.th32ProcessID;
-                //LogEx(g_UI_ERROR, "GetProcessidFromName  result is true!");
-                break;
-            }
+    DWORD pids = 0;
+
+    HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0); //all processes
+
+    PROCESSENTRY32W entry; //current process
+    entry.dwSize = sizeof entry;
+
+    if (!Process32FirstW(snap, &entry)) { //start with the first in snapshot
+        return 0;
+    }
+
+    do {
+        std::wstring exe = entry.szExeFile;
+        std::string exe1 =ws2s(exe);
+        if (0 == processName.compare(exe1.c_str())) {
+           pids=entry.th32ProcessID;
+           break;
         }
-        CloseHandle(hSnapshot);
-        return id > 0 ? true:false;
+    } while (Process32NextW(snap, &entry)); //keep going until end of snapshot
+    return pids;
 }
 
 vector<string> split(const string& str, const string& delim) {
@@ -363,7 +372,7 @@ QString AssembleWSServer(QString wsUrl ,  QString key , QString deviceNo){
 ////////////
 KeyBoardThread::KeyBoardThread(QObject * parent ):QThread(parent) , m_threadFlag(false), m_wsUrl("") , m_loginCommand(""),
     m_wsBoostSocket(NULL), m_keyPingTimer(NULL), m_keyPingThread(NULL), m_reconnectThread(NULL),m_iniParse1(NULL) ,m_iniParse2(NULL),
-    m_isUpperKey(false),m_deviceNumberl("")
+    m_isUpperKey(false),m_deviceNumberl(""),m_gamePid(0)
 {
     connect(this , SIGNAL(AccidentalSignal()) , this , SLOT(AccidentalTermination()),Qt::DirectConnection);
     m_iniParse1 = std::make_shared<DealIniFile>();
@@ -458,6 +467,7 @@ void KeyBoardThread::StopReconnectThread(){
 
 
 void KeyBoardThread::OnKeyPingTimer(){
+    IsGameWindowActive();
     LOG_INFO("start keyPing!");
     if(!KeyPing()){
        LOG_INFO("OnKeyPingTimer failure!");
@@ -835,7 +845,43 @@ void KeyBoardThread::DealTheJoystick(Json::Value  &root){
     }
 }
 
+
+bool KeyBoardThread::IsGameWindowActive(){
+    bool ret = false;
+    HWND hWnd = GetForegroundWindow();
+    DWORD processId = 0;
+    if(!hWnd){
+        return ret;
+    }
+    GetWindowThreadProcessId(hWnd, &processId);
+    LOG_INFO(QString("IsShouldDealKeyMouse processId:%1").arg(processId));
+
+    ///////////get process ID of the gamename
+    if( processId == m_gamePid  &&  m_gamePid > 0){
+        ret = true;
+    }else{
+        if(m_gamePid > 0){
+            EnumWindows(SetTopWindowByProcessId , m_gamePid);
+        }
+        LOG_ERROR(QString("game windows is not active , active window pid:%1  gameId:%2").arg(processId).arg(m_gamePid));
+    }
+    return ret;
+}
+
+void KeyBoardThread::SetGamePid(int gamePid){
+    if(gamePid){
+        m_gamePid = gamePid;
+    }
+}
+
+int KeyBoardThread::GetGamePid(){
+    return m_gamePid;
+}
+
 void KeyBoardThread::MessageCallback(std::string message , int error){
+    if(!IsGameWindowActive()){
+        return ;
+    }
     if (message != "")
     {
         emit RecordSignal(UI_INFO , QString("keyboard/mouse msg:%1!").arg(message.c_str()));
@@ -1000,7 +1046,7 @@ CloudStreamer::CloudStreamer(QWidget *parent) :
     m_keyBoardthreadFlag(false), m_keyBoardThread(nullptr),m_gamePath(""),m_fileSavePath(""),m_mode(DEFAULT_MODE),
     m_sessionId(""), m_deviceNo(""), m_controlUrl("") , m_file(NULL), m_gameStatusTimer(NULL),m_startGameThread(NULL),
     m_stopGameThread(NULL),m_signInThread(NULL),m_changeResolution(NULL),m_gameStatusThread(NULL), m_gstlaunchProtectThead(NULL), m_gstlaunchProtectTheadFlag(false),
-    m_systray(NULL)
+    m_systray(NULL),m_gamePid(0)
 {
     ui->setupUi(this);
     QuitForce(false);
@@ -1083,6 +1129,8 @@ CloudStreamer::CloudStreamer(QWidget *parent) :
     //this->showMinimized();
     LOG_INFO(QString("CloudStreamer::CloudStreamer"));
     LastGaspGoalPushStreamer();
+//    int id = isProcessRunning("hollow_knight.exe");
+//    LOG_ERROR(QString("testFunction:%1").arg(id));
 }
 
 
@@ -1175,7 +1223,7 @@ void  CloudStreamer::ProtectGstLaunch(){
     //////////wait the gst-launch-1.0 is start success
     QString appPath = QCoreApplication::applicationDirPath();
     QString gstExePath = g_gstLaunchName;
-    while(!isProcessRunning(gstExePath.toLocal8Bit().data()) && m_gstlaunchProtectTheadFlag){
+    while(0 < isProcessRunning(gstExePath.toLocal8Bit().data()) && m_gstlaunchProtectTheadFlag){
         Sleep(1000);
     }
     LOG_INFO("start enter the loops which check gst-launch-1.0's status!\n");
@@ -1185,7 +1233,10 @@ void  CloudStreamer::ProtectGstLaunch(){
         bool result = false;
         result = GameIsAreadlyRunning(m_gameId);
         if(result){
-            result  = isProcessRunning(gstExePath.toLocal8Bit().data());
+            if(m_keyBoardThread.get()){
+                m_keyBoardThread->SetGamePid(m_gamePid);
+            }
+            result  = isProcessRunning(gstExePath.toLocal8Bit().data()) > 0 ? true:false;
             if(!result){
                 LOG_INFO("gst-launch-1.0 is quit!\n");
                 if(!appPath.isEmpty()){
@@ -1720,16 +1771,20 @@ bool CloudStreamer::isUpdate(){
 }
 
 void CloudStreamer::LastGaspGoalPushStreamer(){
-    QString appPath = QCoreApplication::applicationDirPath();
-    QString str11 = appPath + g_closeStreamer;
-    QProcess process;
-    process.setProgram("cmd");
-    QStringList argument;
-    argument<<"/c"<< "taskkill  /IM gst-launch-1.0.exe  /F" ;//"start /min"<<str11.toLocal8Bit().data() ;
-    process.setArguments(argument);
-    process.start();
-    //process.waitForStarted(); //等待程序启动
-    process.waitForFinished();//等待程序关闭
+//    QString appPath = QCoreApplication::applicationDirPath();
+//    QString str11 = appPath + g_closeStreamer;
+//    QProcess process;
+//    process.setProgram("cmd");
+//    QStringList argument;
+//    argument<<"/c"<< "taskkill  /IM gst-launch-1.0.exe  /F" ;//"start /min"<<str11.toLocal8Bit().data() ;
+//    process.setArguments(argument);
+//    process.start();
+//    //process.waitForStarted(); //等待程序启动
+//    process.waitForFinished();//等待程序关闭
+    QProcess p;
+    QString c = "taskkill /im gst-launch-1.0.exe /f";
+    p.execute(c);
+    p.close();
 }
 
 void CloudStreamer::StartGameCallback(QString data , StartGameModel model){
@@ -1870,6 +1925,8 @@ int  CloudStreamer::PushStreamerAction(QString serverUrl , QString domain , QStr
         LOG_INFO("push stream success!\n");
     //});
     //m_pushStreamerFunc();
+    ////start the thread protect gst-launch-1.0
+    StartProtectGstLaunch();
     return 0;
 }
 
@@ -1898,6 +1955,14 @@ int  CloudStreamer::StartGameAction(QString gameId , QString startGameParams , Q
             LOG_INFO(QString("%1 is not running ,should been restart now!").arg(gameId));
             StartGameByGameId(gameId , startGameParamsEx);
         }
+        do{
+            gameIsRunning = GameIsAreadlyRunning(gameId);
+            if(!gameIsRunning){
+                Sleep(2000);
+            }else{
+                break;
+            }
+        }while(true);
         RecordGameInfo *recordInfos1 = RecordGameInfo::GetInstance();
         recordInfos1->RecordInfo(data, gameId, 1);
     //}, _1);
@@ -1931,10 +1996,10 @@ int  CloudStreamer::StartKeyboardAction(QString gameId , QString controlUrl , QS
     QString wsUrl  = AssembleWSServer(controlUrl , g_wsServerKey , m_deviceNo);
     //ui->textEdit->setText(keyboardLoginParams);
     m_keyBoardThread->SetDeviceNumber(m_deviceNo);
+    m_keyBoardThread->SetGamePid(m_gamePid);
+
     m_keyBoardThread->start(/*controlUrl*/wsUrl ,keyboardLoginParams);
     emit this->ChangeCloudStreamerStatue("start!");
-    ////start the thread protect gst-launch-1.0
-    StartProtectGstLaunch();
     return 0;
 }
 
@@ -2022,9 +2087,12 @@ void CloudStreamer::on_changeCloudStreamerStatue(QString statusContent){
 
  bool  CloudStreamer::GameIsAreadlyRunning(QString gameId){
      if(!gameId.isEmpty()){
-         QString gameName = GetValueByGameID(m_gameId , "gameExeName");
+         QString gameName = GetValueByGameID(m_gameId , "gameexeName");
          if(!gameName.isEmpty()){
-              return isProcessRunning(gameName.toStdString().c_str());
+              LOG_ERROR(QString("gameName:%1  gameId:%2").arg(gameName).arg(gameId));
+              m_gamePid = isProcessRunning(gameName.toStdString().c_str());
+              LOG_ERROR(QString("gameName:%1  gameId:%2  pid:%3").arg(gameName).arg(gameId).arg(m_gamePid));
+              return m_gamePid > 0 ? true:false;
          }
      }
      return false;
@@ -2040,7 +2108,8 @@ void CloudStreamer::on_changeCloudStreamerStatue(QString statusContent){
          QString gameName = gameStopPath;//GetValueByGameID(m_gameId , "gameExeName");
          if(!gameName.isEmpty()){
              do{
-                 if(!isProcessRunning(gameName.toStdString().c_str())){
+                 bool result = isProcessRunning(gameName.toStdString().c_str()) > 0 ? true:false;
+                 if(!result){
                      break;
                  }
                  Sleep(100);
@@ -2277,7 +2346,7 @@ QString  WSServiceTransferSignStringEx(QString deviceNo, QString sessionId , QSt
     RecordGameInfo *recordInfos1 = RecordGameInfo::GetInstance();
     gameIsRunning = recordInfos1->GetGameStatus();
     data["status"] = gameIsRunning ? 1 : 0;
-    data["pushVersion"] = "1.0.1.13";
+    data["pushVersion"] = "1.0.1.14";
     //////////////////
     root["data"] = data;
     ////////

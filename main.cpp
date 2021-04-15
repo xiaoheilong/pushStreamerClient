@@ -17,6 +17,8 @@
 #include <iostream>
 #include <QAbstractButton>
 #include <tlhelp32.h>
+#include <shlwapi.h>
+#pragma comment(lib, "Shlwapi.lib")
 typedef CloudGameServiceIteratorSpace::CloudGameServiceIterator  CloudGameServiceIteratorEx;
 using namespace WSServiceSpace;
 
@@ -156,6 +158,19 @@ int main(int argc, char *argv[])
     }
     QApplication a(argc, argv);
     SetUnhandledExceptionFilter((LPTOP_LEVEL_EXCEPTION_FILTER)(GenerateMiniDump));
+    //set the log level according the  streamConfig.ini
+    DealIniFile  streamConfig;
+    QString executePath = QCoreApplication::applicationDirPath();
+    if(0 != streamConfig.OpenFile(executePath + "//streamConfig.ini")){
+        return -1;
+    }
+    QString logLevel = streamConfig.GetValue("streamConfig" , "logServel").toString();
+    if(!logLevel.isEmpty()){
+         int level = 0;
+         level = logLevel.toInt();
+         LOG_SET_LEVEL(level);
+    }
+    /////////
     CloudStreamer w;
     //w.SetUIModel(UI_MODE::ONLY_PUSH_STREAMER);
     //int rerun = GetProcessidFromName(L"gst-launch-1.0.exe");
@@ -171,13 +186,10 @@ int main(int argc, char *argv[])
     w.BindServiceIterator(cloudGameServiceIterator);
     ///中转服务器
     QString  serverUrl = "ws://socket1.cccsaas.com:9092";
-    DealIniFile  streamConfig;
-    QString executePath = QCoreApplication::applicationDirPath();
-    if(0 == streamConfig.OpenFile(executePath + "//streamConfig.ini")){
-         QString serverUrl1 = streamConfig.GetValue("streamConfig" , "serverUrl").toString();
-         if(!serverUrl1.isEmpty()){
-             serverUrl = serverUrl1;
-         }
+    //DealIniFile  streamConfig;
+    QString serverUrl1 = streamConfig.GetValue("streamConfig" , "serverUrl").toString();
+    if(!serverUrl1.isEmpty()){
+         serverUrl = serverUrl1;
     }
 
     wsServiceCloudGame->ConnectWS(serverUrl , "");//wss://101.132.169.20:4455/wss

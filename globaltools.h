@@ -21,6 +21,8 @@ using namespace QLog4QtSpace;
 #define LOG_OBJECT_WARN(msg) QLog::instance()->warn(msg);
 
 #define LOG_OBJECT_ERROR(msg) QLog::instance()->error(msg);
+
+#define LOG_SET_LEVEL(level)  QLog::instance()->setLevel(level);
 #endif
 ///
 #endif // GLOBALTOOLS_H

@@ -23,6 +23,8 @@ namespace QLog4QtSpace{
         virtual void warn (const QString& log){logger()->warn(log);}
         virtual void error(const QString& log){logger()->error(log);}
         virtual void fatal(const QString& log){logger()->fatal(log);}
+
+        virtual void setLevel(int level);
     private:
         static QAtomicPointer<QLog> _instance;
         static QMutex _mutex;

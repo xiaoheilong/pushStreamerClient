@@ -4,7 +4,7 @@
 #include "log4qt/propertyconfigurator.h"
 #include "globaltools.h"
 namespace QLog4QtSpace{
-
+using namespace Log4Qt;
 QAtomicPointer<QLog> QLog::_instance = 0;
 QMutex QLog::_mutex;
 
@@ -33,6 +33,64 @@ QLog *QLog::instance()
         _instance.testAndSetOrdered(0, new QLog);//第二次检测。
     }
     return _instance;
+}
+
+
+void QLog::setLevel(int level){
+//    NULL_INT = 0,
+//    ALL_INT = 32,
+//    TRACE_INT = 64,
+//    DEBUG_INT = 96,
+//    INFO_INT = 128,
+//    WARN_INT = 150,
+//    ERROR_INT = 182,
+//    FATAL_INT = 214,
+//    OFF_INT = 255
+    Level levelReal = Level::NULL_INT;
+    switch(level){
+    case 0:{
+        levelReal = Level::NULL_INT;
+    }
+        break;
+    case 1:{
+        levelReal = Level::ALL_INT;
+    }
+        break;
+    case 2:{
+        levelReal = Level::TRACE_INT;
+    }
+        break;
+    case 3:{
+        levelReal = Level::DEBUG_INT;
+    }
+        break;
+    case 4:{
+        levelReal = Level::INFO_INT;
+    }
+        break;
+    case 5:{
+        levelReal = Level::WARN_INT;
+    }
+        break;
+    case 6:{
+        levelReal = Level::ERROR_INT;
+    }
+        break;
+    case 7:{
+        levelReal = Level::FATAL_INT;
+    }
+        break;
+    case 8:{
+        levelReal = Level::OFF_INT;
+    }
+        break;
+    default:{
+
+    }
+        break;
+    }
+    logger()->setLevel(levelReal);
+    LOG_ERROR(QString("set log level:%1").arg(level));
 }
 
 }

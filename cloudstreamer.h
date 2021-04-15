@@ -74,7 +74,7 @@ using namespace DealIniFileSpace;
 using namespace KeyValueTransformtNamespace;
 using namespace WebSocketNamsSpace;
 //typename KeyValueTransformtNamespace::KeyValueTransformt  KeyValueTransformt;
-bool isProcessRunning(QString processName);
+int isProcessRunning(QString processName);
 std::wstring s2ws(const std::string &s);
 class CloudStreamer;
 class KeyBoardThread: public QThread, public OutterInterfaceConnection
@@ -90,6 +90,9 @@ public:
     virtual void MessageCallback(std::string msg , int error);
     virtual void FailureCallback(std::string msg , int error);
     virtual void InterruptCallback(std::string message , int error);
+
+    void SetGamePid(int gamePid);
+    int GetGamePid();
 signals:
     void  RecordSignal(QString flagStr , QString logStr);
     void  DisConnect();
@@ -128,7 +131,9 @@ private:
     bool IsLeftKeyboardNumberLetter(int & keyValue);
     void DealTheFullKeyboardModel(Json::Value  & root);//root is the pointer of Json::Value , Do it first, maybe optimize in future
     void DealTheNormalKeyboardModel(Json::Value  &root);
-    void DealTheJoystick(Json::Value  &root);
+    void DealTheJoystick(Json::Value  &root);   
+
+    bool IsGameWindowActive();
 private:
     bool m_threadFlag;
     QString m_wsUrl ;
@@ -143,6 +148,7 @@ protected:
     std::shared_ptr<DealIniFile>  m_iniParse2;
     bool m_isUpperKey;
     QString m_deviceNumberl;
+    int m_gamePid;
 };
 
 enum UI_MODE{
@@ -309,5 +315,6 @@ private:
     QSystemTrayIcon *m_systray;
     PushStreamerParams m_pushStreamerParams;
     StartGameParams  m_startGameParams;
+    int m_gamePid;
 };
 #endif // CLOUDSTREAMER_H
