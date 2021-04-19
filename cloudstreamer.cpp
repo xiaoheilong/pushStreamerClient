@@ -165,7 +165,7 @@ void BitSet(unsigned char *p_data, unsigned char position, int flag)
             *p_data &= ~(tmp << (position - 1));
         }
     }
-}    
+}
 string&   replace_all(string&   str,const   string&   old_value,const   string&   new_value)
 {
     while(true)   {
@@ -480,7 +480,6 @@ void KeyBoardThread::OnKeyPingTimer(){
     }
     //{"mode":2,"port":设备号,"type":"ping","ud":10}
     Json::Value root;
-    Json::Value data;
 
     root["mode"] = 2;
     root["port"] = m_deviceNumberl.toLocal8Bit().data();
@@ -564,10 +563,12 @@ void KeyBoardThread::DealTheFullKeyboardModel(Json::Value  &root){
                         if(!keyMappingValue.isEmpty()){
                             int key = keyMappingValue.toInt();
                             if(key > 0){
+                                LOG_ERROR(QString("full keyboard down key value:%1").arg(key));
                                 KeyDown(key);
                             }
                             if( 20 == key){
                                 m_isUpperKey = !m_isUpperKey;
+                                LOG_ERROR("upper key is set!");
                             }
                         }else{
                             LOG_ERROR("keyMappingValue is empty!");
@@ -583,6 +584,7 @@ void KeyBoardThread::DealTheFullKeyboardModel(Json::Value  &root){
             }
             KeyDown(keyTemp);
         }
+        LOG_ERROR(QString("full keyboard ud:%1 value=%2").arg(ud).arg(keyTemp));
 
     }else if (ud == 2)
     {
@@ -597,6 +599,7 @@ void KeyBoardThread::DealTheFullKeyboardModel(Json::Value  &root){
             keyTemp = atoi(key.c_str());
         }
         KeyUp(keyTemp);
+        LOG_ERROR(QString("full keyboard ud:%1 value=%2").arg(ud).arg(keyTemp));
     }
 
 }
@@ -607,6 +610,10 @@ void KeyBoardThread::DealTheNormalKeyboardModel(Json::Value  &root){
     int controlType = root["mode"].asInt();
     if( 0 == controlType){//普通键盘按键
         int ud = root["ud"].asInt();
+        if(!root.isMember("key")){
+            LOG_ERROR("the key message not has member 'key'");
+            return;
+        }
         if (ud == 1)
         {
             bool isInt =  root["key"].isInt();
@@ -899,6 +906,7 @@ void KeyBoardThread::MessageCallback(std::string message , int error){
 
             }else if(0 == type.compare("keycode")){
                 ////////全键盘模式
+                LOG_ERROR("full keyboard mode");
                 DealTheFullKeyboardModel(root);
             }else{
                 DealTheNormalKeyboardModel(root);
@@ -1272,7 +1280,7 @@ void  CloudStreamer::ProtectGstLaunch(){
 //        if(!result){
 //            m_startGameFunc(0);
 //        }
-        Sleep(4000);
+        Sleep(8000);
     }
 
 
@@ -1469,7 +1477,7 @@ void CloudStreamer::install_Driver()
             LOG_ERROR("InstallAll.bat Failed.\n");
             return;
         }
-    }else{  
+    }else{
         LOG_ERROR("QDir::currentPath is empty!.\n");
     }
 
@@ -1790,6 +1798,7 @@ void CloudStreamer::LastGaspGoalPushStreamer(){
 void CloudStreamer::StartGameCallback(QString data , StartGameModel model){
     LOG_INFO("enter StartGameCallback  !");
     LOG_INFO(data);
+    //std::unique_lock<std::mutex> lock(m_gameMutex);
     ClearFunctionParams();
     LastGaspGoalPushStreamer();
     try{
@@ -1853,6 +1862,7 @@ void CloudStreamer::StartGameCallback(QString data , StartGameModel model){
                 /// \brief keyboardLoginParams
                 if(root["keyboardLoginParams"].isObject()){
                     Json::Value loginRoot =  root["keyboardLoginParams"];
+                    loginRoot["init"]=123;//just for promise the Json::Value has a init value
                     loginRoot["port"] = m_deviceNo.toLocal8Bit().data();
                     root["keyboardLoginParams"] = loginRoot;
                 }
@@ -1925,8 +1935,6 @@ int  CloudStreamer::PushStreamerAction(QString serverUrl , QString domain , QStr
         LOG_INFO("push stream success!\n");
     //});
     //m_pushStreamerFunc();
-    ////start the thread protect gst-launch-1.0
-    StartProtectGstLaunch();
     return 0;
 }
 
@@ -2000,6 +2008,8 @@ int  CloudStreamer::StartKeyboardAction(QString gameId , QString controlUrl , QS
 
     m_keyBoardThread->start(/*controlUrl*/wsUrl ,keyboardLoginParams);
     emit this->ChangeCloudStreamerStatue("start!");
+    ////start the thread protect gst-launch-1.0
+    StartProtectGstLaunch();
     return 0;
 }
 
@@ -2165,6 +2175,7 @@ QString CloudStreamer::GetGameStopByID(QString gameId){
 
 void CloudStreamer::StopGameCallback(QString data){
     LOG_INFO("enter StopGameCallback  !");
+    //std::unique_lock<std::mutex> lock(m_gameMutex);
     LastGaspGoalPushStreamer();
     QString gameName = GetValueByGameID(m_gameId , "gameExeName");
     RecordGameInfo *recordInfos1 = RecordGameInfo::GetInstance();

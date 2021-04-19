@@ -106,6 +106,11 @@ LONG WINAPI ExceptionFilter(LPEXCEPTION_POINTERS lpExceptionInfo)
 
 
 void StartProtectedScript(){
+    ////////taskkill all cmd.exe
+    QProcess p;
+    QString c = "taskkill   /f  /fi \"windowtitle eq  管理员:  protectCloudStreamer.bat\" /T";
+    p.execute(c);
+    p.close();
     ///////start protected bat
     QString appPath = QCoreApplication::applicationDirPath();
     QString scriptPath = appPath + "/protectCloudStreamer.bat";

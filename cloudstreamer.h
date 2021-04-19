@@ -316,5 +316,6 @@ private:
     PushStreamerParams m_pushStreamerParams;
     StartGameParams  m_startGameParams;
     int m_gamePid;
+    std::mutex m_gameMutex;
 };
 #endif // CLOUDSTREAMER_H
