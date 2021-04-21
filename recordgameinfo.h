@@ -1,11 +1,11 @@
 ﻿#ifndef RECORDGAMEINFO_H
 #define RECORDGAMEINFO_H
-
+#include "dealinifile.h"
 #include <QObject>
 #include <mutex>
 #include <memory>
 namespace RecordGameInfoSpace{
-
+    using namespace DealIniFileSpace;
     class RecordGameInfo
     {
     public:
@@ -24,9 +24,11 @@ namespace RecordGameInfoSpace{
         int GetGameStatus();
         QString GetGameId();
         bool GetIsUpdate();
+    private:
+        void InitDealIniFile();
     protected:
         static RecordGameInfo * m_instance;
-        std::mutex m_modifyMutex;
+        std::shared_ptr<DealIniFile> m_dealIniFile;
     };
 }
 #endif // RECORDGAMEINFO_H

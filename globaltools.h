@@ -24,5 +24,7 @@ using namespace QLog4QtSpace;
 
 #define LOG_SET_LEVEL(level)  QLog::instance()->setLevel(level);
 #endif
+//////////////some global function
+int NSSleep(int intel);
 ///
 #endif // GLOBALTOOLS_H

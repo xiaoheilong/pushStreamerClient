@@ -126,7 +126,9 @@ SOURCES += \
     log4qt/src/log4qt/rollingfileappender.cpp \
     log4qt/src/log4qt/simplelayout.cpp \
     log4qt/src/log4qt/ttcclayout.cpp \
-    log4qt/src/log4qt/writerappender.cpp
+    log4qt/src/log4qt/writerappender.cpp \
+    mutexcellcallback.cpp \
+    globaltools.cpp
 
 HEADERS += \
         cloudGame/include/json/autolink.h \
@@ -178,7 +180,8 @@ HEADERS += \
     log4qt/src/log4qt/rollingfileappender.h \
     log4qt/src/log4qt/simplelayout.h \
     log4qt/src/log4qt/ttcclayout.h \
-    log4qt/src/log4qt/writerappender.h
+    log4qt/src/log4qt/writerappender.h \
+    mutexcellcallback.h
 
 FORMS += \
         cloudstreamer.ui \

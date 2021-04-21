@@ -54,6 +54,8 @@ const QString g_autoUpdateScript= "/updater/interface.bat";
 const QString g_keyBoardIniTopic="ValueName";
 QString g_cloudPathBat="executeFile.bat";
 QString g_closeStreamer="/gstreamer/1.0/msvc_x86_64/bin/killStreamer.bat";
+const QString g_streamConfigFile = "//streamConfig.ini";
+const QString g_cloudStreamConfigFile = "//cloudGameConfig.ini";
 //推流和键盘默认配置文件在 streamConfig.ini文件中
 //////云游戏默认配置文件在   cloudGameConfig.ini文件中
 /// ////////////////
@@ -1054,10 +1056,9 @@ CloudStreamer::CloudStreamer(QWidget *parent) :
     m_keyBoardthreadFlag(false), m_keyBoardThread(nullptr),m_gamePath(""),m_fileSavePath(""),m_mode(DEFAULT_MODE),
     m_sessionId(""), m_deviceNo(""), m_controlUrl("") , m_file(NULL), m_gameStatusTimer(NULL),m_startGameThread(NULL),
     m_stopGameThread(NULL),m_signInThread(NULL),m_changeResolution(NULL),m_gameStatusThread(NULL), m_gstlaunchProtectThead(NULL), m_gstlaunchProtectTheadFlag(false),
-    m_systray(NULL),m_gamePid(0)
+    m_systray(NULL),m_gamePid(0),m_StreamConfigIniParse(NULL) , m_CloudGameConfigIniParse(NULL)
 {
     ui->setupUi(this);
-    QuitForce(false);
 
     ///////////init winsocket 32
     INT rc;
@@ -1071,45 +1072,55 @@ CloudStreamer::CloudStreamer(QWidget *parent) :
         m_isWin32Init = true;
     }
     //////////////////read the config from streamConfig.ini
-    DealIniFile  streamConfig;
+    m_StreamConfigIniParse = std::make_shared<DealIniFile>();
     QString executePath = QCoreApplication::applicationDirPath();
     if(executePath.isEmpty()){
         LOG_ERROR("executePath should be empty!");
+        return;
     }
-    if(0 == streamConfig.OpenFile(executePath + "//streamConfig.ini")){
-        g_gStreamerLogPath = streamConfig.GetValue("streamConfig" , "g_gStreamerLogPath").toString();
-        g_signKey = streamConfig.GetValue("streamConfig" , "g_signKey").toString();
-        g_wsServerKey = streamConfig.GetValue("streamConfig" , "g_wsServerKey").toString();
-        g_reportGameStatusInteral= streamConfig.GetValue("streamConfig" , "g_reportGameStatusInteral").toInt();
-        //g_reportGameStatusInteral = 30000;//streamConfig.GetValue("streamConfig" , "g_reportGameStatusInteral").toInt();
-        LOG_INFO(QString("g_gStreamerLogPath =%1 g_signKey=%2 g_wsServerKey=%3  reportGameTime=%4 ").arg(g_gStreamerLogPath).arg(g_signKey).arg(g_wsServerKey).arg(g_reportGameStatusInteral));
+    if(0 != m_StreamConfigIniParse->OpenFile(executePath + g_streamConfigFile)){
+        LOG_ERROR(QString("the file %1 is open failure!").arg(executePath + g_streamConfigFile));
+        return;
     }
+    QuitForce(false);
+    m_CloudGameConfigIniParse = std::make_shared<DealIniFile>();
+    if(0 != m_CloudGameConfigIniParse->OpenFile(executePath + g_cloudStreamConfigFile)){
+        LOG_ERROR(QString("the file %1 is open failure!").arg(executePath + g_cloudStreamConfigFile));
+        return;
+    }
+    /////////////
+    g_gStreamerLogPath = m_StreamConfigIniParse->GetValue("streamConfig" , "g_gStreamerLogPath").toString();
+    g_signKey = m_StreamConfigIniParse->GetValue("streamConfig" , "g_signKey").toString();
+    g_wsServerKey = m_StreamConfigIniParse->GetValue("streamConfig" , "g_wsServerKey").toString();
+    g_reportGameStatusInteral= m_StreamConfigIniParse->GetValue("streamConfig" , "g_reportGameStatusInteral").toInt();
+    //g_reportGameStatusInteral = 30000;//streamConfig.GetValue("streamConfig" , "g_reportGameStatusInteral").toInt();
+    LOG_INFO(QString("g_gStreamerLogPath =%1 g_signKey=%2 g_wsServerKey=%3  reportGameTime=%4 ").arg(g_gStreamerLogPath).arg(g_signKey).arg(g_wsServerKey).arg(g_reportGameStatusInteral));
+    ////////
     QString streamServerUrl = "https://";
-    streamServerUrl += streamConfig.GetValue("streamConfig" , "videoIp").toString();
+    streamServerUrl += m_StreamConfigIniParse->GetValue("streamConfig" , "videoIp").toString();
     streamServerUrl += ":";
-    streamServerUrl += streamConfig.GetValue("streamConfig" , "videoPort").toString();
+    streamServerUrl += m_StreamConfigIniParse->GetValue("streamConfig" , "videoPort").toString();
     streamServerUrl += "/";
     ///////////////初始值
     ui->lineEdit->setText(streamServerUrl);
-    ui->lineEdit_2->setText(streamConfig.GetValue("streamConfig" , "videoIp").toString());
-    ui->lineEdit_3->setText(streamConfig.GetValue("streamConfig" , "roomId").toString());
-    ui->lineEdit_4->setText(streamConfig.GetValue("streamConfig" , "framerate").toString());
-    ui->lineEdit_5->setText(streamConfig.GetValue("streamConfig" , "bitrate").toString());
-    ui->lineEdit_6->setText(streamConfig.GetValue("streamConfig" , "deadline").toString());
-    ui->lineEdit_7->setText(streamConfig.GetValue("streamConfig" , "cpuused").toString());
-    ui->lineEdit_8->setText(streamConfig.GetValue("streamConfig" , "x").toString());
-    ui->lineEdit_9->setText(streamConfig.GetValue("streamConfig" , "y").toString());
-    ui->comboBox->setCurrentIndex(streamConfig.GetValue("streamConfig" , "mode").toInt());
-    ui->comboBox_2->setCurrentIndex(streamConfig.GetValue("streamConfig" , "capmode").toInt());
-    ui->comboBox_3->setCurrentIndex(streamConfig.GetValue("streamConfig" , "vol").toInt());
-    ui->lineEdit_11->setText(streamConfig.GetValue("streamConfig" , "keyboardIp").toString());
-    ui->lineEdit_10->setText(streamConfig.GetValue("streamConfig" , "keyboardPort").toString());
-    ui->textEdit->setText(streamConfig.GetValue("streamConfig" , "keyboardLoginParams").toString());
+    ui->lineEdit_2->setText(m_StreamConfigIniParse->GetValue("streamConfig" , "videoIp").toString());
+    ui->lineEdit_3->setText(m_StreamConfigIniParse->GetValue("streamConfig" , "roomId").toString());
+    ui->lineEdit_4->setText(m_StreamConfigIniParse->GetValue("streamConfig" , "framerate").toString());
+    ui->lineEdit_5->setText(m_StreamConfigIniParse->GetValue("streamConfig" , "bitrate").toString());
+    ui->lineEdit_6->setText(m_StreamConfigIniParse->GetValue("streamConfig" , "deadline").toString());
+    ui->lineEdit_7->setText(m_StreamConfigIniParse->GetValue("streamConfig" , "cpuused").toString());
+    ui->lineEdit_8->setText(m_StreamConfigIniParse->GetValue("streamConfig" , "x").toString());
+    ui->lineEdit_9->setText(m_StreamConfigIniParse->GetValue("streamConfig" , "y").toString());
+    ui->comboBox->setCurrentIndex(m_StreamConfigIniParse->GetValue("streamConfig" , "mode").toInt());
+    ui->comboBox_2->setCurrentIndex(m_StreamConfigIniParse->GetValue("streamConfig" , "capmode").toInt());
+    ui->comboBox_3->setCurrentIndex(m_StreamConfigIniParse->GetValue("streamConfig" , "vol").toInt());
+    ui->lineEdit_11->setText(m_StreamConfigIniParse->GetValue("streamConfig" , "keyboardIp").toString());
+    ui->lineEdit_10->setText(m_StreamConfigIniParse->GetValue("streamConfig" , "keyboardPort").toString());
+    ui->textEdit->setText(m_StreamConfigIniParse->GetValue("streamConfig" , "keyboardLoginParams").toString());
     SetUIModel((UI_MODE)(ui->comboBox_4->currentIndex()));
     install_Driver();
     //////////////connect the signal and slot
     m_cloudGameServiceIterator.reset();
-    m_iniParse = std::make_shared<DealIniFile>();
     ///
     ///
     g_This = this;
@@ -1152,10 +1163,10 @@ CloudStreamer::~CloudStreamer()
     }else{
         LOG_INFO("~CloudStreamer  m_cloudGameServiceIterator is null!");
     }
-    if(m_iniParse.get()){
-        m_iniParse.reset();
+    if(m_StreamConfigIniParse.get()){
+        m_StreamConfigIniParse.reset();
     }else{
-        LOG_INFO("~CloudStreamer  m_iniParse is null!");
+        LOG_INFO("~CloudStreamer  m_StreamConfigIniParse is null!");
     }
     if(m_keyBoardThread.get()){
         m_keyBoardThread->stop();
@@ -1232,7 +1243,7 @@ void  CloudStreamer::ProtectGstLaunch(){
     QString appPath = QCoreApplication::applicationDirPath();
     QString gstExePath = g_gstLaunchName;
     while(0 < isProcessRunning(gstExePath.toLocal8Bit().data()) && m_gstlaunchProtectTheadFlag){
-        Sleep(1000);
+        NSSleep(1000);
     }
     LOG_INFO("start enter the loops which check gst-launch-1.0's status!\n");
     ///////////
@@ -1280,7 +1291,7 @@ void  CloudStreamer::ProtectGstLaunch(){
 //        if(!result){
 //            m_startGameFunc(0);
 //        }
-        Sleep(8000);
+        NSSleep(8000);
     }
 
 
@@ -1340,16 +1351,20 @@ void    CloudStreamer::StopWorkThread(std::shared_ptr<std::thread> thread){
 
 
 void CloudStreamer::QuitForce(bool value){
-    DealIniFile  streamConfig;
     QString executePath = QCoreApplication::applicationDirPath();
     if(executePath.isEmpty()){
         LOG_ERROR("executePath should be empty!");
+        return;
     }
-    if(0 == streamConfig.OpenFile(executePath + "//streamConfig.ini")){
-        streamConfig.SetValue("streamConfig" , "forceQuit", value ?"1":"0");
-    }else{
-        LOG_INFO(QString("QuitForce streamConfig open failure the file path=%1 !").arg(executePath + "//streamConfig.ini"));
+    if(!m_StreamConfigIniParse.get()){
+        m_StreamConfigIniParse = std::make_shared<DealIniFile>();
+        int ret  = m_StreamConfigIniParse->OpenFile(executePath + g_streamConfigFile);
+        if(0 != ret){
+            LOG_ERROR(QString("QuitForce streamConfig open failure the file path=%1 !").arg(executePath + g_streamConfigFile));
+            return;
+        }
     }
+    m_StreamConfigIniParse->SetValue("streamConfig" , "forceQuit", value ?"1":"0");
 }
 
 void CloudStreamer::KillGameByName(QString gameName){
@@ -1762,17 +1777,23 @@ void CloudStreamer::on_game_status_timer(){
 bool CloudStreamer::isUpdate(){
     //RecordGameInfo recordInfos1;
     return  false;
-    DealIniFile  streamConfig;
     QString executePath = QCoreApplication::applicationDirPath();
     if(executePath.isEmpty()){
         LOG_ERROR( "executePath should be empty!");
     }
-    if(0 == streamConfig.OpenFile(executePath + "//streamConfig.ini")){
-        QString str = streamConfig.GetValue("streamConfig" , "isUpdate").toString();
-        if(!str.isEmpty()){
-            if(1 == str.toInt()){
-                return true;
-            }
+    if(!m_StreamConfigIniParse.get()){
+        m_StreamConfigIniParse = std::make_shared<DealIniFile>();
+        int ret =m_StreamConfigIniParse->OpenFile(executePath + g_streamConfigFile);
+        if(0 != ret){
+            LOG_ERROR(QString("open %1  ini file is failure!").arg(executePath + g_streamConfigFile));
+            return false;
+        }
+    }
+
+    QString str = m_StreamConfigIniParse->GetValue("streamConfig" , "isUpdate").toString();
+    if(!str.isEmpty()){
+        if(1 == str.toInt()){
+            return true;
         }
     }
     return false;
@@ -1966,7 +1987,7 @@ int  CloudStreamer::StartGameAction(QString gameId , QString startGameParams , Q
         do{
             gameIsRunning = GameIsAreadlyRunning(gameId);
             if(!gameIsRunning){
-                Sleep(2000);
+                NSSleep(2000);
             }else{
                 break;
             }
@@ -2022,15 +2043,20 @@ void CloudStreamer::on_changeCloudStreamerStatue(QString statusContent){
 
  QString CloudStreamer::GetValueByGameID(QString gameId , QString keyName){
     if(!gameId.isEmpty() && !keyName.isEmpty()){
-        DealIniFile  streamConfig;
         QString executePath = QCoreApplication::applicationDirPath();
         ///路径是否合法
         if(!executePath.isEmpty()){
-            if(0 == streamConfig.OpenFile(executePath + "/cloudGameConfig.ini")){
-                QString keyValue = streamConfig.GetValue("id" , gameId , keyName).toString();
-                if(!keyValue.isEmpty()){
-                    return keyValue;
+            if(!m_CloudGameConfigIniParse.get()){
+                m_CloudGameConfigIniParse = std::make_shared<DealIniFile>();
+                int ret =  m_CloudGameConfigIniParse->OpenFile(executePath + g_cloudStreamConfigFile);
+                if(0 != ret){
+                    LOG_ERROR(QString("open the file %1 is failure!").arg(g_cloudStreamConfigFile));
+                    return "";
                 }
+            }
+            QString keyValue = m_CloudGameConfigIniParse->GetValue("id" , gameId , keyName).toString();
+            if(!keyValue.isEmpty()){
+                return keyValue;
             }
         }
     }
@@ -2122,7 +2148,7 @@ void CloudStreamer::on_changeCloudStreamerStatue(QString statusContent){
                  if(!result){
                      break;
                  }
-                 Sleep(100);
+                 NSSleep(100);
              }while(1);
              return true;
          }
@@ -2133,19 +2159,22 @@ void CloudStreamer::on_changeCloudStreamerStatue(QString statusContent){
 
 QString CloudStreamer::GetGamePathByID(QString gameId){
     if(!gameId.isEmpty() ){
-        DealIniFile  streamConfig;
         QString executePath = QCoreApplication::applicationDirPath();
         ///路径是否合法
         LOG_INFO(QString("executePath:%1  gameId=%2!").arg(executePath).arg(gameId));
         if(!executePath.isEmpty()){
-            if(0 == streamConfig.OpenFile(executePath + "/cloudGameConfig.ini")){
-                /////////////
-                ///////
-                QString path = streamConfig.GetValue("id" , gameId , "path").toString();
-                LOG_INFO(QString("gamePath :%1  gameId=%2!").arg(path).arg(gameId));
-                if(!path.isEmpty()){
-                    return  path;
+            if(!m_CloudGameConfigIniParse.get()){
+                m_CloudGameConfigIniParse = std::make_shared<DealIniFile>();
+                int ret =  m_CloudGameConfigIniParse->OpenFile(executePath + g_cloudStreamConfigFile);
+                if(0 != ret){
+                   LOG_ERROR(QString("the file is open %1 failure!").arg(executePath + g_cloudStreamConfigFile));
+                   return "";
                 }
+            }
+            QString path = m_CloudGameConfigIniParse->GetValue("id" , gameId , "path").toString();
+            LOG_INFO(QString("gamePath :%1  gameId=%2!").arg(path).arg(gameId));
+            if(!path.isEmpty()){
+                return  path;
             }
         }
     }
@@ -2155,18 +2184,21 @@ QString CloudStreamer::GetGamePathByID(QString gameId){
 
 QString CloudStreamer::GetGameStopByID(QString gameId){
     if(!gameId.isEmpty() ){
-        DealIniFile  streamConfig;
         QString executePath = QCoreApplication::applicationDirPath();
         ///路径是否合法
         if(!executePath.isEmpty()){
-            if(0 == streamConfig.OpenFile(executePath + "/cloudGameConfig.ini")){
-                /////////////
-                ///////
-               // QString path = streamConfig.GetValue("id" , gameId , "stopScript").toString();
-                QString path = streamConfig.GetValue("id" , gameId , "gameExeName").toString();
-                if(!path.isEmpty()){
-                    return  path;
+            if(!m_CloudGameConfigIniParse.get()){
+                m_CloudGameConfigIniParse = std::make_shared<DealIniFile>();
+                int  ret = m_CloudGameConfigIniParse->OpenFile(executePath + g_cloudStreamConfigFile);
+                if(0 != ret){
+                   LOG_ERROR(QString("open %1 is failure!").arg(executePath + g_cloudStreamConfigFile));
+                   return "";
                 }
+            }
+            // QString path = streamConfig.GetValue("id" , gameId , "stopScript").toString();
+            QString path = m_CloudGameConfigIniParse->GetValue("id" , gameId , "gameExeName").toString();
+            if(!path.isEmpty()){
+                return  path;
             }
         }
     }
@@ -2643,8 +2675,8 @@ void CloudStreamer::ParseMessageCallback(QString data){
                            m_signInThread->detach();
                        }
                        //addLogToEdit(UI_INFO , "maybe should go!");
-                       StopReportStatusTimer();
-                       StartReportStatusTimer();
+                       //StopReportStatusTimer();
+                       //StartReportStatusTimer();
                    }else if(0 == msgType.compare("ChangeResolution")){
                        StopWorkThread(m_changeResolution);
                        m_changeResolution = std::make_shared<std::thread>(&CloudStreamer::ChangeResolutionCallback , this , rootJsonStr.c_str());
