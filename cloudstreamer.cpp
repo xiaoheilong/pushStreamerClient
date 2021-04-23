@@ -1243,7 +1243,7 @@ void  CloudStreamer::ProtectGstLaunch(){
     QString appPath = QCoreApplication::applicationDirPath();
     QString gstExePath = g_gstLaunchName;
     while(0 < isProcessRunning(gstExePath.toLocal8Bit().data()) && m_gstlaunchProtectTheadFlag){
-        NSSleep(1000);
+        Sleep(1000);
     }
     LOG_INFO("start enter the loops which check gst-launch-1.0's status!\n");
     ///////////
@@ -1299,7 +1299,7 @@ void  CloudStreamer::ProtectGstLaunch(){
 //                StartGameAction(m_startGameParams.m_gameId.c_str() , m_startGameParams.m_startGameParams.c_str() , m_startGameParams.m_data.c_str() , 0);
 //            }
         }
-        NSSleep(8000);
+        Sleep(8000);
     }
 
 
@@ -1995,7 +1995,7 @@ int  CloudStreamer::StartGameAction(QString gameId , QString startGameParams , Q
         do{
             gameIsRunning = GameIsAreadlyRunning(gameId);
             if(!gameIsRunning){
-                NSSleep(2000);
+                Sleep(2000);
             }else{
                 break;
             }
@@ -2156,7 +2156,7 @@ void CloudStreamer::on_changeCloudStreamerStatue(QString statusContent){
                  if(!result){
                      break;
                  }
-                 NSSleep(100);
+                 Sleep(100);
              }while(1);
              return true;
          }
@@ -2397,7 +2397,7 @@ QString  WSServiceTransferSignStringEx(QString deviceNo, QString sessionId , QSt
     RecordGameInfo *recordInfos1 = RecordGameInfo::GetInstance();
     gameIsRunning = recordInfos1->GetGameStatus();
     data["status"] = gameIsRunning ? 1 : 0;
-    data["pushVersion"] = "1.0.1.15";
+    data["pushVersion"] = "1.0.1.16";
     //////////////////
     root["data"] = data;
     ////////
