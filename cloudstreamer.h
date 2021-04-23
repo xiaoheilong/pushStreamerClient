@@ -211,7 +211,7 @@ private slots:
 
     void on_comboBox_4_currentIndexChanged(int index);
 
-    void on_game_status_timer();
+    void GameStatusCallback();
 
     void on_changeCloudStreamerStatue(QString statusContent);
     void on_inputLog(QString flagStr,QString logStr);

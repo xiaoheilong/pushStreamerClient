@@ -37,7 +37,7 @@ INCLUDEPATH += $$PWD/./cloudGame/include
 #应用图标
 RC_ICONS += image/cloudStreamer.ico
 #版本号
-VERSION = 1.0.1.14
+VERSION = 1.0.1.15
 #中文
 RC_LANG = 0x0004
 # 公司名
@@ -127,7 +127,6 @@ SOURCES += \
     log4qt/src/log4qt/simplelayout.cpp \
     log4qt/src/log4qt/ttcclayout.cpp \
     log4qt/src/log4qt/writerappender.cpp \
-    mutexcellcallback.cpp \
     globaltools.cpp
 
 HEADERS += \
@@ -180,8 +179,7 @@ HEADERS += \
     log4qt/src/log4qt/rollingfileappender.h \
     log4qt/src/log4qt/simplelayout.h \
     log4qt/src/log4qt/ttcclayout.h \
-    log4qt/src/log4qt/writerappender.h \
-    mutexcellcallback.h
+    log4qt/src/log4qt/writerappender.h
 
 FORMS += \
         cloudstreamer.ui \

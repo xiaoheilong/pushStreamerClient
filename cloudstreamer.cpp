@@ -1248,6 +1248,12 @@ void  CloudStreamer::ProtectGstLaunch(){
     LOG_INFO("start enter the loops which check gst-launch-1.0's status!\n");
     ///////////
     while(m_gstlaunchProtectTheadFlag){
+        ///////the node is startting game
+        RecordGameInfo* recordInfos = RecordGameInfo::GetInstance();
+        int gameStatus = recordInfos->GetGameStatus();
+        if( 0 == gameStatus){
+            break;
+        }
         /////check the status of gst-launch-1.0
         bool result = false;
         result = GameIsAreadlyRunning(m_gameId);
@@ -1285,12 +1291,14 @@ void  CloudStreamer::ProtectGstLaunch(){
             }else{
                 LOG_INFO( "gst-launch-1.0 is running!\n");
             }
+        }else{
+            //////////////check the status of game
+//            result = GameIsAreadlyRunning(m_gameId);
+//            if(!result){
+//                //m_startGameFunc(0);
+//                StartGameAction(m_startGameParams.m_gameId.c_str() , m_startGameParams.m_startGameParams.c_str() , m_startGameParams.m_data.c_str() , 0);
+//            }
         }
-        //////////////check the status of game
-//        result = GameIsAreadlyRunning(m_gameId);
-//        if(!result){
-//            m_startGameFunc(0);
-//        }
         NSSleep(8000);
     }
 
@@ -1761,7 +1769,7 @@ void CloudStreamer::DisconnectCallback(QString url, QString data){
 
 }
 
-void CloudStreamer::on_game_status_timer(){
+void CloudStreamer::GameStatusCallback(){
     QString gameName = GetValueByGameID(m_gameId , "gameExeName");
     RecordGameInfo *recordInfos1 = RecordGameInfo::GetInstance();
     if(isUpdate() ){
@@ -2389,7 +2397,7 @@ QString  WSServiceTransferSignStringEx(QString deviceNo, QString sessionId , QSt
     RecordGameInfo *recordInfos1 = RecordGameInfo::GetInstance();
     gameIsRunning = recordInfos1->GetGameStatus();
     data["status"] = gameIsRunning ? 1 : 0;
-    data["pushVersion"] = "1.0.1.14";
+    data["pushVersion"] = "1.0.1.15";
     //////////////////
     root["data"] = data;
     ////////
@@ -2569,7 +2577,7 @@ void CloudStreamer::MessageFeedBack(QString msgType ,  QString resultCode , QStr
 
 
 void    CloudStreamer::StartReportStatusTimer(){
-    LOG_INFO(QString("g_reportGameStatusInteral =!").arg(g_reportGameStatusInteral));
+    LOG_INFO(QString("g_reportGameStatusInteral =%1").arg(g_reportGameStatusInteral));
     m_gameStatusTimer = new QTimer(0);
     m_gameStatusTimer->setInterval(g_reportGameStatusInteral);
 
@@ -2578,7 +2586,7 @@ void    CloudStreamer::StartReportStatusTimer(){
 
     connect(m_gameStatusThread , SIGNAL(finished()) , m_gameStatusTimer, SLOT(deleteLater()));
     connect(m_gameStatusThread  , SIGNAL(started()) , m_gameStatusTimer, SLOT(start()));
-    connect(m_gameStatusTimer , SIGNAL(timeout()) , this , SLOT(on_game_status_timer()));
+    connect(m_gameStatusTimer , SIGNAL(timeout()) , this , SLOT(GameStatusCallback()));
     m_gameStatusThread->start();
     ///////////
     ActiveReportGameStatus();
@@ -2586,7 +2594,7 @@ void    CloudStreamer::StartReportStatusTimer(){
 
 void    CloudStreamer::StopReportStatusTimer(){
     if(m_gameStatusTimer){
-        disconnect(m_gameStatusTimer , SIGNAL(timeout()) , this , SLOT(on_game_status_timer()));
+        disconnect(m_gameStatusTimer , SIGNAL(timeout()) , this , SLOT(GameStatusCallback()));
     }
     if(m_gameStatusThread){
         if(!m_gameStatusThread->isFinished()){
@@ -2675,8 +2683,8 @@ void CloudStreamer::ParseMessageCallback(QString data){
                            m_signInThread->detach();
                        }
                        //addLogToEdit(UI_INFO , "maybe should go!");
-                       //StopReportStatusTimer();
-                       //StartReportStatusTimer();
+                       StopReportStatusTimer();
+                       StartReportStatusTimer();
                    }else if(0 == msgType.compare("ChangeResolution")){
                        StopWorkThread(m_changeResolution);
                        m_changeResolution = std::make_shared<std::thread>(&CloudStreamer::ChangeResolutionCallback , this , rootJsonStr.c_str());

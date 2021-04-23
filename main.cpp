@@ -17,6 +17,7 @@
 #include <iostream>
 #include <QAbstractButton>
 #include <tlhelp32.h>
+#include <vld.h>
 #include <shlwapi.h>
 #pragma comment(lib, "Shlwapi.lib")
 typedef CloudGameServiceIteratorSpace::CloudGameServiceIterator  CloudGameServiceIteratorEx;
@@ -157,30 +158,6 @@ int HasAnotherInstance(QString processName)
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
-    ///////////////test the code
-//    using namespace MutexCellCallbackSpace;
-//    long testIntValue = 1;
-//    MutexCellCallback  testCallback(QString("thisTest"));
-
-//    MutexT testMutex = std::make_shared<std::mutex>();
-//    CallbackT callback = std::make_shared<Function_Callback>([&testIntValue](){
-//        testIntValue += 10;
-//        LOG_ERROR(QString("testIntValue=%1!").arg(testIntValue));
-//    });
-//    std::shared_ptr<MutexCallback> params = std::make_shared<MutexCallback>(callback , testMutex , 3000);
-//    testCallback.PushCallback(params);
-//    std::chrono::duration<double , std::milli> interTime;
-//    long interTimeLong = 0;
-//    while(true){
-//        auto startTime = std::chrono::system_clock::now();
-//        Sleep(3000);
-//        auto timeTemp = std::chrono::system_clock::now();
-//        interTime = timeTemp  - startTime;
-//        LOG_ERROR(QString("callback interTime =%1  ms").arg(interTime.count()));
-//        interTimeLong = interTime.count();
-//    }
-//    ////////////////
-//    return 0 ;
     DealIniFile  streamConfig;
     QString logLevel = streamConfig.GetValue("streamConfig" , "logServel").toString();
     if(!logLevel.isEmpty()){
@@ -195,6 +172,8 @@ int main(int argc, char *argv[])
     }
     //QApplication a(argc, argv);
     SetUnhandledExceptionFilter((LPTOP_LEVEL_EXCEPTION_FILTER)(GenerateMiniDump));
+    ////////set the process highest proprity
+    SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
     //set the log level according the  streamConfig.ini
     QString executePath = QCoreApplication::applicationDirPath();
     if(0 != streamConfig.OpenFile(executePath + "//streamConfig.ini")){
