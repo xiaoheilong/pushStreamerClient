@@ -211,7 +211,7 @@ private slots:
 
     void on_comboBox_4_currentIndexChanged(int index);
 
-    void on_game_status_timer();
+    void GameStatusCallback();
 
     void on_changeCloudStreamerStatue(QString statusContent);
     void on_inputLog(QString flagStr,QString logStr);
@@ -294,7 +294,8 @@ private:
     QString m_gamePath;
     QString m_fileSavePath;
     std::shared_ptr<CloudGameServiceIterator> m_cloudGameServiceIterator;
-    std::shared_ptr<DealIniFile>  m_iniParse;
+    std::shared_ptr<DealIniFile>  m_StreamConfigIniParse;
+    std::shared_ptr<DealIniFile>  m_CloudGameConfigIniParse;
     UI_MODE m_mode;
     QString m_sessionId;
     QString m_deviceNo;

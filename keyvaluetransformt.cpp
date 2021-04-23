@@ -1,5 +1,5 @@
 ﻿#include "keyvaluetransformt.h"
-
+#include "globaltools.h"
 #include <WinSock2.h>
 #include <assert.h>
 #include <stdio.h>
@@ -27,6 +27,7 @@ float GetPercentInRange(float value , float  left , float right,  float range){
     return difference * range;
 }
 
+
 int NSSleep(int intel)  // ms
 {
     HANDLE hTimer = NULL;
@@ -42,7 +43,6 @@ int NSSleep(int intel)  // ms
         return 1;
     }
 
-    // Set a timer to wait for 10 seconds.
     if (!SetWaitableTimer(
                 hTimer, &liDueTime, 0, NULL, NULL, 0))
     {

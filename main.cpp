@@ -17,6 +17,7 @@
 #include <iostream>
 #include <QAbstractButton>
 #include <tlhelp32.h>
+#include <vld.h>
 #include <shlwapi.h>
 #pragma comment(lib, "Shlwapi.lib")
 typedef CloudGameServiceIteratorSpace::CloudGameServiceIterator  CloudGameServiceIteratorEx;
@@ -154,28 +155,33 @@ int HasAnotherInstance(QString processName)
         return count >= 2 ? true:false;
 }
 
-
 int main(int argc, char *argv[])
 {
-    if(HasAnotherInstance("CloudStreamer.exe")){
-        //MessageBoxA(NULL, "CloudStreamer.exe is Already running!" , "error" ,MB_OK);
-        return -1;
-    }
     QApplication a(argc, argv);
-    SetUnhandledExceptionFilter((LPTOP_LEVEL_EXCEPTION_FILTER)(GenerateMiniDump));
-    //set the log level according the  streamConfig.ini
     DealIniFile  streamConfig;
-    QString executePath = QCoreApplication::applicationDirPath();
-    if(0 != streamConfig.OpenFile(executePath + "//streamConfig.ini")){
-        return -1;
-    }
     QString logLevel = streamConfig.GetValue("streamConfig" , "logServel").toString();
     if(!logLevel.isEmpty()){
          int level = 0;
          level = logLevel.toInt();
          LOG_SET_LEVEL(level);
     }
+    if(HasAnotherInstance("CloudStreamer.exe")){
+        //MessageBoxA(NULL, "CloudStreamer.exe is Already running!" , "error" ,MB_OK);
+        LOG_ERROR("the game is has a instance!");
+        return -1;
+    }
+    //QApplication a(argc, argv);
+    SetUnhandledExceptionFilter((LPTOP_LEVEL_EXCEPTION_FILTER)(GenerateMiniDump));
+    ////////set the process highest proprity
+    SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
+    //set the log level according the  streamConfig.ini
+    QString executePath = QCoreApplication::applicationDirPath();
+    if(0 != streamConfig.OpenFile(executePath + "//streamConfig.ini")){
+        LOG_ERROR(QString("ini file path:%1 is open failure!").arg(executePath + "//streamConfig.ini"));
+        return -1;
+    }
     /////////
+
     CloudStreamer w;
     //w.SetUIModel(UI_MODE::ONLY_PUSH_STREAMER);
     //int rerun = GetProcessidFromName(L"gst-launch-1.0.exe");
@@ -184,14 +190,13 @@ int main(int argc, char *argv[])
     std::shared_ptr<CloudGameServiceIteratorEx> cloudGameServiceIterator = std::make_shared<CloudGameServiceIteratorEx>();
     wsServiceCloudGame  = std::shared_ptr<WsServiceBase>(CreateCloudWSClient());
     if(!wsServiceCloudGame.get() || !cloudGameServiceIterator.get()){
-        // QMessageBox::information(nullptr , "error!" , "wsServiceCloudGame or cloudGameServiceIterator shouldn't be empty!");
+         LOG_ERROR("wsServiceCloudGame or cloudGameServiceIterator is null!");
          return  -1;
     }
     wsServiceCloudGame->BindOutter(cloudGameServiceIterator);
     w.BindServiceIterator(cloudGameServiceIterator);
     ///中转服务器
     QString  serverUrl = "ws://socket1.cccsaas.com:9092";
-    //DealIniFile  streamConfig;
     QString serverUrl1 = streamConfig.GetValue("streamConfig" , "serverUrl").toString();
     if(!serverUrl1.isEmpty()){
          serverUrl = serverUrl1;

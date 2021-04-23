@@ -1,5 +1,6 @@
 ﻿#include "recordgameinfo.h"
 #include "dealinifile.h"
+#include "globaltools.h"
 #include <QCoreApplication>
 #include <chrono>
 namespace RecordGameInfoSpace{
@@ -15,13 +16,15 @@ const QString g_isUpdate = "isUpdate";
 static std::mutex m_mutex;
 
 RecordGameInfo * RecordGameInfo::m_instance = NULL;
-RecordGameInfo::RecordGameInfo()
+RecordGameInfo::RecordGameInfo():m_dealIniFile(NULL)
 {
 
 }
 
 RecordGameInfo::~RecordGameInfo(){
-
+    if(m_dealIniFile.get()){
+        m_dealIniFile.reset();
+    }
 }
 
 void RecordGameInfo::ReleaseInstance(){
@@ -42,123 +45,85 @@ RecordGameInfo * RecordGameInfo::GetInstance(){
 }
 
 
-void RecordGameInfo::RecordInfo(QString startGameParame , QString gameId, int gameStatus){
-    DealIniFile  streamConfig;
-    QString executePath = QCoreApplication::applicationDirPath();
-    ///路径是否合法
-    if(!executePath.isEmpty()){
-        std::unique_lock<std::mutex> lock(m_modifyMutex);
-        /*if(lock.try_lock())*/{
-            if(0 == streamConfig.OpenFile(executePath + g_pushStreamerRunningStatus)){
-                streamConfig.SetValue(g_iniTopic,g_startGameParame ,startGameParame);
-                streamConfig.SetValue(g_iniTopic,g_startGameStatus ,gameStatus ? "1":"0");
-                streamConfig.SetValue(g_iniTopic,g_gameId ,gameId);
+void RecordGameInfo::InitDealIniFile(){
+    if(!m_dealIniFile.get()){
+        m_dealIniFile = std::make_shared<DealIniFile>();
+        if(m_dealIniFile.get()){
+            QString executePath = QCoreApplication::applicationDirPath();
+            if(!executePath.isEmpty()){
+                executePath += g_pushStreamerRunningStatus;
+                if(0 != m_dealIniFile->OpenFile(executePath)){
+                    LOG_ERROR(QString("the ini file :%1 is open failure!").arg(executePath));
+                }else{
+                     LOG_INFO(QString("the ini file :%1 is open success!").arg(executePath));
+                }
             }
         }
+    }
+}
+
+void RecordGameInfo::RecordInfo(QString startGameParame , QString gameId, int gameStatus)
+{
+    InitDealIniFile();
+    if(m_dealIniFile.get()){
+        m_dealIniFile->SetValue(g_iniTopic,g_startGameParame ,startGameParame);
+        m_dealIniFile->SetValue(g_iniTopic,g_startGameStatus ,gameStatus ? "1":"0");
+        m_dealIniFile->SetValue(g_iniTopic,g_gameId ,gameId);
     }
 }
 
 void RecordGameInfo::RecordInfo(QString startGameParame){
-    DealIniFile  streamConfig;
-    QString executePath = QCoreApplication::applicationDirPath();
-    ///路径是否合法
-    if(!executePath.isEmpty()){
-        std::unique_lock<std::mutex> lock(m_modifyMutex);
-        /*if(lock.try_lock())*/{
-            if(0 == streamConfig.OpenFile(executePath + g_pushStreamerRunningStatus)){
-                streamConfig.SetValue(g_iniTopic,g_startGameParame ,startGameParame);
-            }
-        }
+    InitDealIniFile();
+    if(m_dealIniFile.get()){
+        m_dealIniFile->SetValue(g_iniTopic,g_startGameParame ,startGameParame);
     }
 }
 
 void RecordGameInfo::RecordInfo(int gameStatus){
-    DealIniFile  streamConfig;
-    QString executePath = QCoreApplication::applicationDirPath();
-    ///路径是否合法
-    if(!executePath.isEmpty()){
-         std::unique_lock<std::mutex> lock(m_modifyMutex);
-         /*if(lock.try_lock())*/{
-             if(0 == streamConfig.OpenFile(executePath + g_pushStreamerRunningStatus)){
-                 streamConfig.SetValue(g_iniTopic,g_startGameStatus ,gameStatus ? "1":"0");
-             }
-         }
+    InitDealIniFile();
+    if(m_dealIniFile.get()){
+        m_dealIniFile->SetValue(g_iniTopic,g_startGameStatus ,gameStatus ? "1":"0");
     }
 }
 
 void RecordGameInfo::RecordInfo(QString gameId,int gameStatus){
-    DealIniFile  streamConfig;
-    QString executePath = QCoreApplication::applicationDirPath();
-    ///路径是否合法
-    if(!executePath.isEmpty()){
-         std::unique_lock<std::mutex> lock(m_modifyMutex);
-         /*if(lock.try_lock())*/{
-             if(0 == streamConfig.OpenFile(executePath + g_pushStreamerRunningStatus)){
-                 streamConfig.SetValue(g_iniTopic,g_gameId ,gameId);
-                 streamConfig.SetValue(g_iniTopic,g_startGameStatus ,gameStatus ? "1":"0");
-             }
-         }
+    InitDealIniFile();
+    if(m_dealIniFile.get()){
+        m_dealIniFile->SetValue(g_iniTopic,g_gameId ,gameId);
+        m_dealIniFile->SetValue(g_iniTopic,g_startGameStatus ,gameStatus ? "1":"0");
     }
 }
 
 QString RecordGameInfo::GetGameInfo(){
-    DealIniFile  streamConfig;
-    QString executePath = QCoreApplication::applicationDirPath();
-    ///路径是否合法
-    if(!executePath.isEmpty()){
-        std::unique_lock<std::mutex> lock(m_modifyMutex);
-        /*if(lock.try_lock())*/{
-            if(0 == streamConfig.OpenFile(executePath + g_pushStreamerRunningStatus)){
-                return streamConfig.GetValue(g_iniTopic , g_startGameParame).toString();
-            }
-        }
+    InitDealIniFile();
+    if(m_dealIniFile.get()){
+        return m_dealIniFile->GetValue(g_iniTopic , g_startGameParame).toString();
     }
     return "";
 }
 
 int RecordGameInfo::GetGameStatus(){
-    DealIniFile  streamConfig;
-    QString executePath = QCoreApplication::applicationDirPath();
-    ///路径是否合法
-    if(!executePath.isEmpty()){
-        std::unique_lock<std::mutex> lock(m_modifyMutex);
-        /*if(lock.try_lock())*/{
-            if(0 == streamConfig.OpenFile(executePath + g_pushStreamerRunningStatus)){
-                return streamConfig.GetValue(g_iniTopic , g_startGameStatus).toString().toInt();
-            }
-        }
+    InitDealIniFile();
+    if(m_dealIniFile.get()){
+        return m_dealIniFile->GetValue(g_iniTopic , g_startGameStatus).toString().toInt();
     }
     return 0;
 }
 
 QString RecordGameInfo::GetGameId(){
-    DealIniFile  streamConfig;
-    QString executePath = QCoreApplication::applicationDirPath();
-    ///路径是否合法
-    if(!executePath.isEmpty()){
-        std::unique_lock<std::mutex> lock(m_modifyMutex);
-       /* if(lock.try_lock())*/{
-            if(0 == streamConfig.OpenFile(executePath + g_pushStreamerRunningStatus)){
-                return streamConfig.GetValue(g_iniTopic , g_gameId).toString();
-            }
-        }
+    InitDealIniFile();
+    if(m_dealIniFile.get()){
+        return m_dealIniFile->GetValue(g_iniTopic , g_gameId).toString();
     }
     return "";
 }
 
 
 bool RecordGameInfo::GetIsUpdate(){
-    DealIniFile  streamConfig;
-    QString executePath = QCoreApplication::applicationDirPath();
-    ///路径是否合法
-    if(!executePath.isEmpty()){
-        std::unique_lock<std::mutex> lock(m_modifyMutex);
-        /*if(lock.try_lock())*/{
-            if(0 == streamConfig.OpenFile(executePath + g_pushStreamerRunningStatus)){
-                if(0 == streamConfig.GetValue(g_iniTopic , g_isUpdate).toString().compare("1")){
-                    return true;
-                }
-            }
+    InitDealIniFile();
+    if(m_dealIniFile.get()){
+        if(0 == m_dealIniFile->GetValue(g_iniTopic , g_isUpdate).toString().compare("1")){
+            return true;
         }
     }
     return false;

@@ -37,7 +37,7 @@ INCLUDEPATH += $$PWD/./cloudGame/include
 #应用图标
 RC_ICONS += image/cloudStreamer.ico
 #版本号
-VERSION = 1.0.1.14
+VERSION = 1.0.1.16
 #中文
 RC_LANG = 0x0004
 # 公司名
@@ -126,7 +126,8 @@ SOURCES += \
     log4qt/src/log4qt/rollingfileappender.cpp \
     log4qt/src/log4qt/simplelayout.cpp \
     log4qt/src/log4qt/ttcclayout.cpp \
-    log4qt/src/log4qt/writerappender.cpp
+    log4qt/src/log4qt/writerappender.cpp \
+    globaltools.cpp
 
 HEADERS += \
         cloudGame/include/json/autolink.h \
