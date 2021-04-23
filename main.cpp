@@ -181,6 +181,7 @@ int main(int argc, char *argv[])
         return -1;
     }
     /////////
+
     CloudStreamer w;
     //w.SetUIModel(UI_MODE::ONLY_PUSH_STREAMER);
     //int rerun = GetProcessidFromName(L"gst-launch-1.0.exe");
