@@ -15,7 +15,7 @@ public:
     QVariant GetValue(QString key,QString keyValue , QString goalKey);  //不比对topic , 通过比对其下的key 来定位,
 
     bool  SetValue(QString topic , QString key , QString value);
-
+    QSettings * GetInitFileParse();
 private:
     QSettings *m_iniFileParse;
 };

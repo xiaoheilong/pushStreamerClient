@@ -9,6 +9,7 @@
 #include "CloudGame.h"
 #include <windows.h>
 namespace KeyValueTransformtNamespace{
+const int g_keyValueDelay=20;
 ////range 为后面映射后的数据的范围
 float GetPercentInRange(float value , float  left , float right,  float range){
     if(value < left){
@@ -47,13 +48,17 @@ int NSSleep(int intel)  // ms
                 hTimer, &liDueTime, 0, NULL, NULL, 0))
     {
         printf("SetWaitableTimer failed (%d)\n", GetLastError());
+        CloseHandle(hTimer);
         return 2;
     }
 
     // Wait for the timer.
-    if (WaitForSingleObject(hTimer, INFINITE) != WAIT_OBJECT_0)
+    if (WaitForSingleObject(hTimer, INFINITE) != WAIT_OBJECT_0){
         printf("WaitForSingleObject failed (%d)\n", GetLastError());
-
+        CloseHandle(hTimer);
+        return -1;
+    }
+    CloseHandle(hTimer);
     return 0;
 }
 
@@ -134,7 +139,7 @@ void KeyValueTransformt::ReverseBounce(float x , float y){
             callback.m_pointer =nullptr;
             callback.m_callback = std::bind([value](){
                 if(!KeyUp(value)){
-                    NSSleep(50);
+                    NSSleep(g_keyValueDelay);
                     KeyUp(value);
                 }else{
                     NSSleep(1);
@@ -224,7 +229,7 @@ void KeyValueTransformt::DirectionAllUp(){
           callback.m_pointer = nullptr;
           callback.m_callback =  std::bind([value](){
               if(!KeyUp(value)){
-                 NSSleep(50);
+                 NSSleep(g_keyValueDelay);
                  KeyUp(value);
               }else{
                  NSSleep(1);
@@ -260,7 +265,7 @@ int KeyValueTransformt::KeyDown_C(int keyValue){
 //                    QString logStr = QString("MouseDown key=%1").arg(key);
 //                    MessageBoxA(NULL , logStr.toStdString().data() , "just for fun" , MB_OK);
                     if(!MouseDown(16383, 16383 , key)){
-                        NSSleep(50);
+                        NSSleep(g_keyValueDelay);
                         MouseDown(16383, 16383 , key);
                     }else{
                         NSSleep(1);
@@ -293,7 +298,7 @@ int KeyValueTransformt::KeyUP_C(int keyValue){
             callback.m_callback = std::bind([key](){
                 if(1 !=key && 2 != key && 3 != key){
                     if(!KeyUp(key)){
-                        NSSleep(50);
+                        NSSleep(g_keyValueDelay);
                         KeyUp(key);
                     }else{
                         NSSleep(1);
@@ -302,7 +307,7 @@ int KeyValueTransformt::KeyUP_C(int keyValue){
 //                    QString logStr = QString("MouseUp key=%1").arg(key);
 //                    MessageBoxA(NULL , logStr.toStdString().data() , "just for fun" , MB_OK);
                     if(!MouseUp(16383, 16383 , 0)){
-                        NSSleep(50);
+                        NSSleep(g_keyValueDelay);
                         MouseUp(16383, 16383 , 0);
                     }else{
                         NSSleep(1);
@@ -330,7 +335,7 @@ int KeyValueTransformt::MouseMove_C(int x, int y, int code){
     callback.m_pointer = nullptr;
     callback.m_callback = std::bind([x, y, code](){
         if(!MouseMove(x, y ,code)){
-            NSSleep(50);
+            NSSleep(g_keyValueDelay);
             MouseMove(x, y ,code);
         }else{
             NSSleep(1);
@@ -352,7 +357,7 @@ int KeyValueTransformt::MouseUp_C(int x, int y, int code){
     callback.m_pointer =nullptr;
     callback.m_callback = std::bind([x, y, code](){
         if(!MouseUp(x, y , code)){
-            NSSleep(50);
+            NSSleep(g_keyValueDelay);
             MouseUp(x, y , code);
         }else{
             NSSleep(1);
@@ -374,7 +379,7 @@ int KeyValueTransformt::MouseDown_C(int x, int y, int code){
     callback.m_pointer = nullptr;
     callback.m_callback = std::bind([x , y , code](){
         if(!MouseDown(x, y , code)){
-            NSSleep(50);
+            NSSleep(g_keyValueDelay);
             MouseDown(x, y , code);
         }else{
             NSSleep(1);

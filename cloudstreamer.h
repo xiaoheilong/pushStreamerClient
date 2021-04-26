@@ -265,6 +265,7 @@ protected:
     QString GetGamePathByID(QString gameId);
     QString GetGameStopByID(QString gameId);
     QString GetValueByGameID(QString gameId , QString keyName);
+    void ForeachKillExe(QString gameId);
     bool    GameIsAreadlyRunning(QString gameId);
     bool    KillAreadlyRunningGame(QString gameId);//同步
     bool    StartGameByGameId(QString gameId ,QString startGameParams);

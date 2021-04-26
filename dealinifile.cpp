@@ -75,6 +75,10 @@ bool  DealIniFile::SetValue(QString topic , QString key , QString value){
     return false;
 }
 
+QSettings *  DealIniFile::GetInitFileParse(){
+    return m_iniFileParse;
+}
+
 }
 
 

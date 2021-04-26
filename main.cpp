@@ -159,6 +159,13 @@ int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
     DealIniFile  streamConfig;
+    //set the log level according the  streamConfig.ini
+    QString executePath = QCoreApplication::applicationDirPath();
+    if(0 != streamConfig.OpenFile(executePath + "//streamConfig.ini")){
+        LOG_ERROR(QString("ini file path:%1 is open failure!").arg(executePath + "//streamConfig.ini"));
+        return -1;
+    }
+    /////////
     QString logLevel = streamConfig.GetValue("streamConfig" , "logServel").toString();
     if(!logLevel.isEmpty()){
          int level = 0;
@@ -174,13 +181,6 @@ int main(int argc, char *argv[])
     SetUnhandledExceptionFilter((LPTOP_LEVEL_EXCEPTION_FILTER)(GenerateMiniDump));
     ////////set the process highest proprity
     SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
-    //set the log level according the  streamConfig.ini
-    QString executePath = QCoreApplication::applicationDirPath();
-    if(0 != streamConfig.OpenFile(executePath + "//streamConfig.ini")){
-        LOG_ERROR(QString("ini file path:%1 is open failure!").arg(executePath + "//streamConfig.ini"));
-        return -1;
-    }
-    /////////
 
     CloudStreamer w;
     //w.SetUIModel(UI_MODE::ONLY_PUSH_STREAMER);

@@ -37,7 +37,7 @@ INCLUDEPATH += $$PWD/./cloudGame/include
 #应用图标
 RC_ICONS += image/cloudStreamer.ico
 #版本号
-VERSION = 1.0.1.16
+VERSION = 1.0.1.18
 #中文
 RC_LANG = 0x0004
 # 公司名
@@ -53,36 +53,36 @@ QMAKE_TARGET_COPYRIGHT = jiudi
 include(./log4qt/src/log4qt/log4qt.pri)
 ########
 #加入调试信息
-QMAKE_CFLAGS_RELEASE += -g
-QMAKE_CXXFLAGS_RELEASE += -g
-#禁止优化
-QMAKE_CFLAGS_RELEASE -= -O2
-QMAKE_CXXFLAGS_RELEASE -= -O2
-#release在最后link时默认有"-s”参数，表示"Omit all symbol information from the output file"，因此要去掉该参
-CONFIG += release
-win32:CONFIG(debug, debug|release):{
-  win32:!msvc{
-      QMAKE_LFLAGS_RELEASE = -mthreads
-  }else{
-      message("msvc version debug msvc")
-      QMAKE_CFLAGS_RELEASE = -O2 -MD -Zi
-      QMAKE_LFLAGS_RELEASE = /INCREMENTAL:NO /DEBUG
-      QMAKE_LFLAGS_RELEASE += /MAP
-      QMAKE_CFLAGS_RELEASE += /Zi
-      QMAKE_LFLAGS_RELEASE += /debug /opt:ref
-      QMAKE_LFLAGS_RELEASE += /MAP /DEBUG /opt:ref /INCREMENTAL:NO
-  }
-}else{
-  win32:!msvc{
-      QMAKE_LFLAGS_RELEASE = -mthreads
-  }else{
-      message("msvc version release msvc")
-      QMAKE_LFLAGS_RELEASE = /INCREMENTAL:NO /DEBUG
-      QMAKE_CXXFLAGS_RELEASE = $$QMAKE_CFLAGS_RELEASE_WITH_DEBUGINFO
-      QMAKE_LFLAGS_RELEASE = $$QMAKE_LFLAGS_RELEASE_WITH_DEBUGINFO
+#QMAKE_CFLAGS_RELEASE += -g
+#QMAKE_CXXFLAGS_RELEASE += -g
+##禁止优化
+#QMAKE_CFLAGS_RELEASE -= -O2
+#QMAKE_CXXFLAGS_RELEASE -= -O2
+##release在最后link时默认有"-s”参数，表示"Omit all symbol information from the output file"，因此要去掉该参
+#CONFIG += release
+#win32:CONFIG(debug, debug|release):{
+#  win32:!msvc{
+#      QMAKE_LFLAGS_RELEASE = -mthreads
+#  }else{
+#      message("msvc version debug msvc")
+#      QMAKE_CFLAGS_RELEASE = -O2 -MD -Zi
+#      QMAKE_LFLAGS_RELEASE = /INCREMENTAL:NO /DEBUG
+#      QMAKE_LFLAGS_RELEASE += /MAP
+#      QMAKE_CFLAGS_RELEASE += /Zi
+#      QMAKE_LFLAGS_RELEASE += /debug /opt:ref
+#      QMAKE_LFLAGS_RELEASE += /MAP /DEBUG /opt:ref /INCREMENTAL:NO
+#  }
+#}else{
+#  win32:!msvc{
+#      QMAKE_LFLAGS_RELEASE = -mthreads
+#  }else{
+#      message("msvc version release msvc")
+#      QMAKE_LFLAGS_RELEASE = /INCREMENTAL:NO /DEBUG
+#      QMAKE_CXXFLAGS_RELEASE = $$QMAKE_CFLAGS_RELEASE_WITH_DEBUGINFO
+#      QMAKE_LFLAGS_RELEASE = $$QMAKE_LFLAGS_RELEASE_WITH_DEBUGINFO
 
-  }
-}
+#  }
+#}
 ///////
 QMAKE_LFLAGS += /MANIFESTUAC:\"level=\'requireAdministrator\' uiAccess=\'false\'\"
 ////////

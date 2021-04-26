@@ -406,7 +406,7 @@ void KeyBoardThread::StartKeyPingTimer(){
     if(!m_keyPingTimer){
         m_keyPingTimer =new QTimer(0);
         //m_keyPingTimer->setInterval(800);
-        m_keyPingTimer->setInterval(2000);
+        m_keyPingTimer->setInterval(6000);
         m_keyPingThread = new QThread();
         m_keyPingThread->start();
         m_keyPingTimer->moveToThread(m_keyPingThread);
@@ -469,7 +469,6 @@ void KeyBoardThread::StopReconnectThread(){
 
 
 void KeyBoardThread::OnKeyPingTimer(){
-    IsGameWindowActive();
     LOG_INFO("start keyPing!");
     if(!KeyPing()){
        LOG_INFO("OnKeyPingTimer failure!");
@@ -1847,6 +1846,9 @@ void CloudStreamer::StartGameCallback(QString data , StartGameModel model){
                     throw  GameDealExeception("pushStreamer is updating!" , -1);
                     //return;
                 }else{
+
+                     ForeachKillExe(gameId);
+/*
                     RecordGameInfo* recordInfos1 = RecordGameInfo::GetInstance();
                     m_gameId = recordInfos1->GetGameId();
                     if(0 != m_gameId.compare(gameId) && !m_gameId.isEmpty()){
@@ -1856,6 +1858,7 @@ void CloudStreamer::StartGameCallback(QString data , StartGameModel model){
                     }else{
 
                     }
+*/
                 }
                 m_gameId = gameId;
                 //QString startGameParams = root["startGameParams"].asCString();
@@ -1974,7 +1977,7 @@ int  CloudStreamer::StartGameAction(QString gameId , QString startGameParams , Q
         if(gameId.isEmpty()  || startGameParamsEx.isEmpty()){
             LOG_INFO("gameId or  startGameParamsEx is empty!\n");
         }else{
-            if(0 == startGameParamsEx.compare("null"));{
+            if(0 == startGameParamsEx.compare("null")){
                 LOG_INFO(QString("%1 need restart gst-launch-1.0.exe").arg(gameId));
                 startGameParamsEx = "";
                 ActiveReportGameStatus();
@@ -2047,7 +2050,37 @@ void CloudStreamer::on_changeCloudStreamerStatue(QString statusContent){
     ui->label_16->setText(statusContent);
 }
 
+void CloudStreamer::ForeachKillExe(QString gameId){
+    DealIniFile  streamConfig;
+    QString executePath = QCoreApplication::applicationDirPath();
+    ///路径是否合法
+    if(!executePath.isEmpty()){
+      {
+            if(0 == streamConfig.OpenFile(executePath + "/cloudGameConfig.ini")){
+                //return streamConfig.GetValue(g_iniTopic , g_gameId).toString();
+                QSettings * iniParse = streamConfig.GetInitFileParse();
+                if(iniParse){
+                    QStringList groupList = iniParse->childGroups();
+                    foreach (QString group, groupList) {
+                        //streamConfig.m_iniFileParse->beginGroup(group);
+                        //QStringList keyList = streamConfig.m_iniFileParse->allKeys();
+                        QString game_id = streamConfig.GetValue(group, "id").toString();
+                        if(0 != game_id.compare(gameId) && !game_id.isEmpty()){
 
+                            bool IsRunning = false;
+                            IsRunning = GameIsAreadlyRunning(game_id);
+                            if(IsRunning){
+                                KillAreadlyRunningGame(game_id);
+                                LOG_INFO(QString(" ************ mjh kill the gameid =%1 ***********").arg(game_id));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+}
 
  QString CloudStreamer::GetValueByGameID(QString gameId , QString keyName){
     if(!gameId.isEmpty() && !keyName.isEmpty()){
@@ -2131,11 +2164,14 @@ void CloudStreamer::on_changeCloudStreamerStatue(QString statusContent){
 
  bool  CloudStreamer::GameIsAreadlyRunning(QString gameId){
      if(!gameId.isEmpty()){
-         QString gameName = GetValueByGameID(m_gameId , "gameexeName");
+        // QString gameName = GetValueByGameID(m_gameId , "gameexeName");
+         QString gameName = GetValueByGameID(gameId , "gameexeName");
          if(!gameName.isEmpty()){
-              LOG_ERROR(QString("gameName:%1  gameId:%2").arg(gameName).arg(gameId));
+             // LOG_ERROR(QString("gameName:%1  gameId:%2").arg(gameName).arg(gameId));
               m_gamePid = isProcessRunning(gameName.toStdString().c_str());
-              LOG_ERROR(QString("gameName:%1  gameId:%2  pid:%3").arg(gameName).arg(gameId).arg(m_gamePid));
+              if (m_gamePid > 0) {
+                LOG_ERROR(QString("mjh gameName:%1  gameId:%2  pid:%3").arg(gameName).arg(gameId).arg(m_gamePid));
+              }
               return m_gamePid > 0 ? true:false;
          }
      }
@@ -2145,7 +2181,8 @@ void CloudStreamer::on_changeCloudStreamerStatue(QString statusContent){
 
  bool  CloudStreamer::KillAreadlyRunningGame(QString gameId){
      if(!gameId.isEmpty()){
-         QString gameStopPath = GetValueByGameID(m_gameId , "gameExeName");//GetGameStopByID(gameId);
+         //QString gameStopPath = GetValueByGameID(m_gameId , "gameExeName");//GetGameStopByID(gameId);
+          QString gameStopPath = GetValueByGameID(gameId , "gameExeName");//GetGameStopByID(gameId);
          if(!gameStopPath.isEmpty()){
              KillGameByName(gameStopPath);
          }
@@ -2397,7 +2434,7 @@ QString  WSServiceTransferSignStringEx(QString deviceNo, QString sessionId , QSt
     RecordGameInfo *recordInfos1 = RecordGameInfo::GetInstance();
     gameIsRunning = recordInfos1->GetGameStatus();
     data["status"] = gameIsRunning ? 1 : 0;
-    data["pushVersion"] = "1.0.1.16";
+    data["pushVersion"] = "1.0.1.18";
     //////////////////
     root["data"] = data;
     ////////
